@@ -283,7 +283,7 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
 ) {
   ui <- miniPage(
     tags$head(tags$style(HTML(".recalculating { position: relative; z-index: -2 }"))),
-    gadgetTitleBar("Array Layout"),
+    gadgetTitleBar("SpatialCPie"),
     miniTabstripPanel(
       miniTabPanel("Visualize", icon = icon("area-chart"),
                    miniContentPanel(
