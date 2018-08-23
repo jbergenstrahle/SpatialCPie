@@ -98,7 +98,7 @@ arrayPlot <- function(scores, coordinates, image = NULL, spotScale = 1,
 #' @return ggplot object of the clustering tree.
 #' @keywords internal
 #' @import ggplot2 purrr ggiraph ggnetwork intergraph
-#' @importFrom igraph graph_from_data_frame
+#' @importFrom igraph graph_from_data_frame layout.reingold.tilford
 clusterTree <- function(
   assignments,
   transitionLabels = NULL,
