@@ -100,7 +100,7 @@ D2counts = D2counts[, which(colnames(D2counts) %in% D2spotsUnderTissue)]
 ```
 
 ```{r, eval=FALSE}
-library(tidyverse)
+library(purrr)
 clusters = 2:5 %>% map(~kmeans(t(D2counts), centers=.)$cluster)
 
 ```
