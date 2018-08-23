@@ -495,15 +495,13 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
     observeEvent(input$done, {
       stopApp(returnValue = list(
         tree = tree_plot(),
-        piePlots = sapply(
-          input$tree_selected,
-          function(x) eval(call(sprintf("array_%s", x))),
-          simplify = F
+        piePlots = lapply(
+          setNames(input$tree_selected, input$tree_selected),
+          function(x) eval(call(sprintf("array_%s", x)))
         ),
-        piePlotsInfo = sapply(
-          input$tree_selected,
-          function(x) eval(call(sprintf("array_info_%s", x))),
-          simplify = F
+        piePlotsInfo = lapply(
+          setNames(input$tree_selected, input$tree_selected),
+          function(x) eval(call(sprintf("array_info_%s", x)))
         )
       ))
     })
