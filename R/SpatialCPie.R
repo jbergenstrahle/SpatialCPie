@@ -1,11 +1,3 @@
-require(ggiraph)
-require(ggnetwork)
-require(ggplot2)
-require(readr)
-require(zeallot)
-require(intergraph)
-require(scatterpie)
-
 #' Likeness score
 #'
 #' Computes the normalized likeness score from a given distance matrix.
@@ -25,6 +17,7 @@ likeness <- function(d, c = 1.0) {
 #'
 #' Computes all pair-wise distances between two point clouds.
 #' @keywords internal
+#' @import purrr
 pairwiseDistance <- function(
   a, b, d = function(xs, y) sqrt(colSums((t(xs)-y)^2))
 ) {
@@ -45,6 +38,7 @@ pairwiseDistance <- function(
 #' @param spotOpacity opacity of the pie charts.
 #' @return ggplot object of the array pie plot.
 #' @keywords internal
+#' @import ggplot2 purrr scatterpie zeallot
 arrayPlot <- function(scores, coordinates, image = NULL, spotScale = 1,
                       spotOpacity = 1) {
   spots <- intersect(rownames(scores), rownames(coordinates))
@@ -103,6 +97,8 @@ arrayPlot <- function(scores, coordinates, image = NULL, spotScale = 1,
 #' lower resolution cluster.
 #' @return ggplot object of the clustering tree.
 #' @keywords internal
+#' @import ggplot2 purrr ggiraph ggnetwork intergraph
+#' @importFrom igraph graph_from_data_frame
 clusterTree <- function(
   assignments,
   transitionLabels = NULL,
@@ -245,8 +241,8 @@ clusterTree <- function(
 #' SpatialCPie gadget
 #'
 #' Runs the SpatialCPie gadget
-#' @param counts
-#' @param clusterAssignments
+#' @param counts gene count matrix.
+#' @param clusterAssignments list of cluster assignments for each resolution.
 #' @param img image to be used as background to the plot (optional).\cr
 #' Note: For the tissue image to be correctly aligned to the spatial areas, the
 #' pixel.coords argument also needs to be provided.
@@ -254,9 +250,10 @@ clusterTree <- function(
 #' The rows should correspond to the columns (spatial areas) in the count file.
 #' @param view Shiny gadgets viewer options.
 #' Available options: "dialog" (default), "browser", "pane".
-#' @param transProp.threshold
+#' @param transProp.threshold threshold value for which transitions that are shown in the clustering tree.
 #' @keywords arrayplot arraypieplot clustertree
 #' @export
+#' @import shiny miniUI ggplot2 grid zeallot grid purrr readr
 #' @examples
 #' options(device.ask.default = FALSE)
 #'

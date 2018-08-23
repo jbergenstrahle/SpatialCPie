@@ -8,6 +8,10 @@ runCPie(counts, clusterAssignments, img = NULL, view = "dialog",
   pixel.coords = NULL, transProp.threshold = 0.02)
 }
 \arguments{
+\item{counts}{gene count matrix.}
+
+\item{clusterAssignments}{list of cluster assignments for each resolution.}
+
 \item{img}{image to be used as background to the plot (optional).\cr
 Note: For the tissue image to be correctly aligned to the spatial areas, the
 pixel.coords argument also needs to be provided.}
@@ -17,6 +21,8 @@ Available options: "dialog" (default), "browser", "pane".}
 
 \item{pixel.coords}{\code{data.frame} with pixel coordinates (optional).
 The rows should correspond to the columns (spatial areas) in the count file.}
+
+\item{transProp.threshold}{threshold value for which transitions that are shown in the clustering tree.}
 }
 \description{
 Runs the SpatialCPie gadget
