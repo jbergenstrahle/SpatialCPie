@@ -1,6 +1,6 @@
 ---
 title: "Spatial transcriptomics cluster analysis with SpatialCPie"
-author: 
+author:
 - name: "Joseph Bergenstraahle"
   affiliation: "Science for Life Laboratory, Department of Gene Technology, School of Biotechnology, Royal Institute of Technology (KTH), SE-106 91 Solna, Sweden"
 - name: "Ludvig Bergenstraahle"
@@ -13,7 +13,7 @@ output:
 abstract: |
   SpatialCPie is an R package designed to facilitate cluster evaluation for spatial transcriptomics data by providing intuitive visualizations that display the relationship between clusters in order to guide the user during cluster identification, selection and further downstream applications
 vignette: |
-  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteIndexEntry{SpatialCPie}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
