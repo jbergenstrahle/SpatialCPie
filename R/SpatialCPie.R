@@ -199,13 +199,9 @@ clusterTree <- function(
     cell.jitter = 0.75
   )
   data$label <- sprintf("Resolution %s", data$Res)
-  c(points, edges) %<-% {
-    isPoint <- data$x == data$xend & data$y == data$yend
-    list(
-         tail(data[isPoint, ], n = -1),
-         data[!isPoint, ]
-    )
-  }
+  isPoint <- data$x == data$xend & data$y == data$yend
+  points <- tail(data[isPoint, ], n = -1)
+  edges <- data[!isPoint, ]
   ggplot() +
     aes(
       x = x,
