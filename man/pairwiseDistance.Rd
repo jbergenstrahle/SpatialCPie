@@ -6,6 +6,16 @@
 \usage{
 pairwiseDistance(a, b, d = function(xs, y) sqrt(colSums((t(xs) - y)^2)))
 }
+\arguments{
+\item{a}{FIXME}
+
+\item{b}{FIXME}
+
+\item{d}{FIXME}
+}
+\value{
+FIXME
+}
 \description{
 Computes all pair-wise distances between two point clouds.
 }

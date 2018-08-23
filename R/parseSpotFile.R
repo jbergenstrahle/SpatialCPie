@@ -3,6 +3,7 @@
 #' A function that parses the output from the ST spot detector tool to receive pixel coordinates for the spatial areas.
 #'
 #' @param file A spot file that contains the pixel coordinates for each spatial area after alignment to the tissue image via the
+#' @return FIXME
 #' ST spot detector tool (https://github.com/SpatialTranscriptomicsResearch/st_spot_detector).
 #' @keywords spotdetector
 #' @export

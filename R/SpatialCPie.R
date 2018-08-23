@@ -16,6 +16,10 @@ likeness <- function(d, c = 1.0) {
 #' Pair-wise distances
 #'
 #' Computes all pair-wise distances between two point clouds.
+#' @param a FIXME
+#' @param b FIXME
+#' @param d FIXME
+#' @return FIXME
 #' @keywords internal
 #' @import purrr
 pairwiseDistance <- function(
@@ -251,6 +255,7 @@ clusterTree <- function(
 #' @param view Shiny gadgets viewer options.
 #' Available options: "dialog" (default), "browser", "pane".
 #' @param transProp.threshold threshold value for which transitions that are shown in the clustering tree.
+#' @return FIXME
 #' @keywords arrayplot arraypieplot clustertree
 #' @export
 #' @import shiny miniUI ggplot2 grid zeallot grid purrr readr

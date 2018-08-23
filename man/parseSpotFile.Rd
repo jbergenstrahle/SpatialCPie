@@ -7,8 +7,11 @@
 parseSpotFile(file)
 }
 \arguments{
-\item{file}{A spot file that contains the pixel coordinates for each spatial area after alignment to the tissue image via the
-ST spot detector tool (https://github.com/SpatialTranscriptomicsResearch/st_spot_detector).}
+\item{file}{A spot file that contains the pixel coordinates for each spatial area after alignment to the tissue image via the}
+}
+\value{
+FIXME
+ST spot detector tool (https://github.com/SpatialTranscriptomicsResearch/st_spot_detector).
 }
 \description{
 A function that parses the output from the ST spot detector tool to receive pixel coordinates for the spatial areas.
