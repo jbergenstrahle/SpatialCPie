@@ -110,7 +110,7 @@ clusterTree <- function(
 ) {
   ## Compute edges
   # Loop over resolutions
-  transitions <- lapply(1:(ncol(assignments) - 1), function(i) {
+  transitions <- lapply(seq_len(ncol(assignments) - 1), function(i) {
 
     # Extract two neighbouring assignments
     from.res <- colnames(assignments)[i]
