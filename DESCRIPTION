@@ -3,19 +3,20 @@ Title: Cluster analysis of Spatial Transcriptomics data
 Version: 1.0.0
 Authors@R: person("Joseph", "Bergenstraahle", email = "j.bergenstrahle@scilifelab.se", role = c("aut", "cre"))
 Description: Cluster analysis of Spatial Transcriptomics data
-Depends: R (>= 3.4.0)
-Imports: shiny (>= 1.1.0),
-	shinyWidgets (>= 0.4.3),
-	miniUI (>= 0.1.1.1),
-	ggplot2 (>= 3.0.0),
-	tidyverse (>= 1.2.1),
-	igraph (>= 1.2.2),
-	intergraph (>= 2.0-2),
+Depends:
+  R (>= 3.5.0)
+Imports:
 	ggiraph (>= 0.4.4),
 	ggnetwork (>= 0.5.1),
+	ggplot2 (>= 3.0.0),
+	grid (>= 3.5.1),
+	igraph (>= 1.2.2),
+	intergraph (>= 2.0-2),
+	miniUI (>= 0.1.1.1),
+	purrr (>= 0.2.5),
+  readr (>= 1.1.1),
 	scatterpie (>= 0.1.2),
-	ggrepel (>= 0.8.0),
-	grid,
+  shiny (>= 1.1.0),
 	zeallot (>= 0.1.0)
 biocViews: Transcriptomics, Clustering, RNASeq, Software
 License: MIT
