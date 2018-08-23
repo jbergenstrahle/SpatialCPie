@@ -14,7 +14,7 @@
 #'     c(7, 18, 7.00, 18.07, 563.2, 947.0),
 #'     c(8, 11, 8.00, 11.04, 612.5, 627.7)
 #'   ),
-#'   byrow = T,
+#'   byrow = TRUE,
 #'   nrow = 2
 #' )
 #' filename <- tempfile()
@@ -22,7 +22,7 @@
 #'   data,
 #'   file = filename,
 #'   sep = '\t',
-#'   quote = F,
+#'   quote = FALSE,
 #'   col.names = c("x", "y", "new_x", "new_y", "pixel_x", "pixel_y")
 #' )
 #'
@@ -32,7 +32,7 @@
 #' ## Delete spot file
 #' unlink(filename)
 parseSpotFile <- function(file){
-  spots <- read.table(file, header = T)
+  spots <- read.table(file, header = TRUE)
   xcoord <- as.numeric(spots$pixel_x)
   ycoord <- as.numeric(spots$pixel_y)
   coords <- as.data.frame(cbind(pixel_x = xcoord, pixel_y = ycoord))

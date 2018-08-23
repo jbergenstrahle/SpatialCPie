@@ -230,7 +230,7 @@ clusterTree <- function(
             2
           )),
           data = edges,
-          show.legend = F
+          show.legend = FALSE
       )
       else NULL
     } +
@@ -335,7 +335,7 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
     distances <- apply(treeDf[, 2:ncol(treeDf)], 2, function(assignments) {
       labels <- unique(assignments)
       centers <- labels %>%
-        map(~rowMeans(counts[, which(assignments == .), drop = F])) %>%
+        map(~rowMeans(counts[, which(assignments == .), drop = FALSE])) %>%
         invoke(cbind, .)
       colnames(centers) <- labels
       pairwiseDistance(t(centers), t(counts))
@@ -356,7 +356,7 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
       clusterTree(treeDf, input$showTrans, transProp.threshold)
     })
 
-    init_tree <- T
+    init_tree <- TRUE
     output$tree <- renderggiraph({
       plot <- ggiraph(
         code = print(tree_plot()),
@@ -367,7 +367,7 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
       # Get previous selection
       if (isTRUE(init_tree)) {
         selection <- names(distances)
-        init_tree <<- F
+        init_tree <<- FALSE
       } else {
         selection <- input$tree_selected
       }

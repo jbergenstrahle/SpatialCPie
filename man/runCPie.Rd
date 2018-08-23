@@ -24,6 +24,9 @@ The rows should correspond to the columns (spatial areas) in the count file.}
 
 \item{transProp.threshold}{threshold value for which transitions that are shown in the clustering tree.}
 }
+\value{
+FIXME
+}
 \description{
 Runs the SpatialCPie gadget
 }
