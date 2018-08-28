@@ -386,7 +386,6 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
       clusterTree(treeDf, input$showTrans, transProp.threshold)
     })
 
-    init_tree <- TRUE
     output$tree <- renderggiraph({
       plot <- ggiraph(
         code = print(tree_plot()),
@@ -394,26 +393,18 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
         selected_css = "stroke:#000;stroke-width:0.2em;stroke-opacity:0.5;"
       )
 
-      # Get previous selection
-      if (isTRUE(init_tree)) {
-        selection <- names(distances)
-        init_tree <<- FALSE
-      } else {
-        selection <- input$tree_selected
-      }
-
-      # Set selection
+      # Copy selection from the previous tree
       # Note: This could also have been done by sending the `'tree_set'` message
       # on the `'onFlushed'` event. However, that would create a race condition
       # between the message and the browser's loading of the ggiraph dependency
       # file; if the latter is loaded last, the selection would be overwritten.
       # Thus, we instead modify the dependency file directly to include the
       # plot's initial selection.
-      if (length(selection) > 0) {
+      if (length(input$tree_selected) > 0) {
         dep_filename <- paste(
           plot$dependencies[[1]]$src$file,
           plot$dependencies[[1]]$script,
-          sep="/"
+          sep = "/"
         )
         dep_src <- read_file(dep_filename)
 
@@ -431,7 +422,7 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
 
         # Set initial selection
         selection_array <- sprintf("[%s]", lift(paste)(
-          paste0("'", selection, "'"),
+          paste0("'", input$tree_selected, "'"),
           sep = ", "
         ))
         dep_src <- paste0(
@@ -450,6 +441,11 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
       plot$x$ui_html <- ""
 
       plot
+    })
+
+    # Initialize to all resolutions being selected
+    session$onFlushed(function() {
+      session$sendCustomMessage("tree_set", names(distances))
     })
 
     # -- set up array plot output
