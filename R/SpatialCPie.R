@@ -43,6 +43,7 @@ pairwiseDistance <- function(
 #' @return ggplot object of the array pie plot.
 #' @keywords internal
 #' @import ggplot2 purrr scatterpie zeallot
+#' @importFrom stats dist
 arrayPlot <- function(scores, coordinates, image = NULL, spotScale = 1,
                       spotOpacity = 1) {
   spots <- intersect(rownames(scores), rownames(coordinates))
@@ -102,7 +103,12 @@ arrayPlot <- function(scores, coordinates, image = NULL, spotScale = 1,
 #' @return ggplot object of the clustering tree.
 #' @keywords internal
 #' @import ggplot2 purrr ggiraph ggnetwork intergraph
+#' @importFrom dplyr filter group_by mutate n select summarise ungroup
 #' @importFrom igraph graph_from_data_frame layout.reingold.tilford
+#' @importFrom ggrepel geom_label_repel
+#' @importFrom tidyr gather
+#' @importFrom tidyselect everything
+#' @importFrom utils tail
 clusterTree <- function(
   assignments,
   transitionLabels = NULL,
@@ -176,7 +182,7 @@ clusterTree <- function(
     mutate(Res = stringr::str_replace(Res, "res.", "")) %>%
     mutate(Res = as.numeric(Res), Cluster = as.numeric(Cluster)) %>%
     mutate(Node = paste0("R", Res, "C", Cluster)) %>%
-    dplyr::select(Node, everything())
+    select(Node, everything())
 
   ## Construct graph
   graph <- transitions %>%
@@ -188,54 +194,77 @@ clusterTree <- function(
     mutate(FromNode = paste0("R", FromRes, "C", FromClust)) %>%
     mutate(ToNode = paste0("R", ToRes, "C", ToClust)) %>%
     # Reorder columns
-    dplyr::select(FromNode, ToNode, everything()) %>%
+    select(FromNode, ToNode, everything()) %>%
     # Build a graph using igraph
     graph_from_data_frame(vertices = nodes)
 
-  ## Construct plot
-  data <- ggnetwork(
-    graph,
-    layout = layout.reingold.tilford(graph),
-    cell.jitter = 0.75
+  vertices <- cbind(
+    layout.reingold.tilford(graph) %>% `colnames<-`(c("x", "y")),
+    igraph::get.vertex.attribute(graph) %>% as.data.frame
   )
-  data$label <- sprintf("Resolution %s", data$Res)
-  isPoint <- data$x == data$xend & data$y == data$yend
-  points <- tail(data[isPoint, ], n = -1)
-  edges <- data[!isPoint, ]
+  rownames(vertices) <- vertices$name
+  vertices <- vertices[, colnames(vertices) != "name"]
+  vertices$label <- sprintf(
+    "(resolution %d; cluster %d)",
+    vertices$Res,
+    vertices$Cluster
+  )
+
+  edges <- cbind(
+    igraph::get.edgelist(graph) %>%
+      array_branch(1) %>%
+      map(lift(function(from, to) {
+        cbind(vertices[from, c("x", "y")], vertices[to, c("x", "y")] %>%
+              `colnames<-`(c("xend", "yend")))
+      })) %>%
+      invoke(rbind, .),
+    igraph::get.edge.attribute(graph) %>% as.data.frame
+  )
+
+  # Drop root vertex; root should not be selectable
+  vertices <- vertices[rownames(vertices) != "R1C1", ]
+
+  ## Construct plot
   ggplot() +
-    aes(
-      x = x,
-      y = y,
-      xend = xend,
-      yend = yend,
-      color = as.factor(Cluster),
-      data_id = Res,
-      tooltip = label
-    ) +
-    geom_edges(
+    geom_segment(
+      aes(
+        x, y,
+        xend = xend, yend = yend,
+        alpha = TransPropTo
+      ),
       col = "black",
-      mapping = aes(alpha = TransPropTo),
       data = edges
     ) +
     geom_point_interactive(
-      size = 5,
-      data = points,
+      aes(
+        x, y,
+        data_id = Res,
+        color = as.factor(Cluster),
+        size = sqrt(Size),
+        tooltip = label
+      ),
+      data = vertices
     ) +
     {
       if (!is.null(transitionLabels) && transitionLabels %in% c("To", "From"))
-        geom_edgetext_repel(
-          mapping = aes(label = round(
-            if (transitionLabels == "To") TransPropTo
-            else TransPropFrom,
-            2
-          )),
+        geom_label_repel(
+          aes(
+            x = (x + xend) / 2,
+            y = (y + yend) / 2,
+            color = if (transitionLabels == "To") ToClust else FromClust,
+            label = round(
+              if (transitionLabels == "To") TransPropTo else TransPropFrom,
+              2
+            )
+          ),
           data = edges,
           show.legend = FALSE
-      )
+        )
       else NULL
     } +
-      theme_blank() +
-      labs(alpha = "Proportion", color = "Cluster")
+    labs(alpha = "Proportion", color = "Cluster") +
+    scale_size(guide = "none") +
+    theme_blank()
 }
 
 #' SpatialCPie gadget
@@ -255,6 +284,7 @@ clusterTree <- function(
 #' @keywords arrayplot arraypieplot clustertree
 #' @export
 #' @import shiny miniUI ggplot2 grid zeallot grid purrr readr
+#' @importFrom stats setNames
 #' @examples
 #' options(device.ask.default = FALSE)
 #'
