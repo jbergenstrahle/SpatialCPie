@@ -333,10 +333,104 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
     )
   )
 
+  # Relabel the data, making sure that all labels in resolution r are in 1:r
+  clusterAssignments <- lapply(
+    clusterAssignments,
+    function(assignments) {
+      oldLabels <- unique(assignments)
+      newLabels <- setNames(1:length(oldLabels), nm = oldLabels)
+      setNames(newLabels[as.character(assignments)], nm = names(assignments))
+    }
+  )
+
+  # Sort resolutions
+  names(clusterAssignments) <- clusterAssignments %>% map_int(max)
+  clusterAssignments <- clusterAssignments[
+    as.character(sort(as.numeric(names(clusterAssignments))))]
+
+  # Relabel the data so as to maximize the number of spots that keep the same
+  # label between resolutions
+  reassignments <- list(
+    unname(head(clusterAssignments, -1)),
+    unname(tail(clusterAssignments, -1))
+  ) %>%
+    transpose %>%
+    map(lift(function(prev, cur) {
+      setNames(nm = sort(unique(prev))) %>%
+        map(
+          function(x)
+            setNames(nm = sort(unique(cur))) %>%
+              map_dbl(function(y) sum(`*`(prev == x, cur == y)))
+        ) %>%
+        invoke(rbind, .) %>%
+        (function(x) {
+           nfrom <- nrow(x)
+           nto <- ncol(x)
+           n <- max(nfrom, nto)
+           x_ <- x
+           x_ <- do.call(rbind, c(list(x_), rep(list(rep(0, n)), n - nfrom)))
+           x_ <- do.call(cbind, c(list(x_), rep(list(rep(0, n)), n - nto)))
+           lpSolve::lp.assign(-x_)$solution[1:nfrom, 1:nto] %>%
+             `colnames<-`(colnames(x)) %>%
+             `rownames<-`(rownames(x))
+        })
+    }))
+
+  clusterAssignments <- c(
+    list(clusterAssignments[[1]]),
+    list(
+      tail(clusterAssignments, -1),
+      reassignments
+    ) %>%
+      transpose %>%
+      reduce(
+        function(acc, x) {
+          c(accReassignments, accAssignments) %<-% acc
+          c(assignment, reassignment) %<-% x
+          rownames(reassignment) <- rownames(reassignment) %>%
+            map(~if (. %in% accReassignments) accReassignments[.] else .)
+          reassignmentMap <- apply(
+            reassignment,
+            2,
+            function(x) rownames(reassignment)[which.max(x)]
+          )
+          reassignmentMap[!apply(reassignment, 2, max)] <-
+            setdiff(colnames(reassignment), rownames(reassignment))
+          list(
+            reassignmentMap,
+            c(
+              accAssignments,
+              list(vapply(
+                assignment,
+                function(x) as.numeric(reassignmentMap[x]),
+                numeric(1)
+              ))
+            )
+          )
+        },
+        .init = list(character(), list())
+      ) %>%
+      `[[`(2)
+  ) %>%
+    setNames(names(clusterAssignments))
+
+  # Compute colors so that dissimilar clusters are far away in color space
+  maxRes <- tail(clusterAssignments, 1)[[1]]
+  pca <- sort(unique(maxRes)) %>%
+    map(~rowMeans(counts[, maxRes == ., drop = FALSE])) %>%
+    invoke(rbind, .) %>%
+    prcomp(rank = 2, center = T) %>%
+    `$`("x")
+  colors <- colorspace::LAB(cbind(
+    rep(50, nrow(pca)),
+    round((2 * (pca - min(pca)) / (max(pca) - min(pca)) - 1) * 100)
+  )) %>%
+    colorspace::hex(fixup = TRUE)
+
   server <- function(input, output, session) {
     treeDf <- lift(cbind)(clusterAssignments)
     colnames(treeDf) <- apply(treeDf, 2, max)
-    treeDf <- treeDf[, sort(colnames(treeDf))]
+    treeDf <- treeDf[, as.character(sort(as.numeric(colnames(treeDf))))]
 
     # make sure that there's a root node
     if (colnames(treeDf)[1] > 1) {
@@ -383,7 +477,8 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
 
     # -- set up cluster tree output
     tree_plot <- reactive({
-      clusterTree(treeDf, input$showTrans, transProp.threshold)
+      clusterTree(treeDf, input$showTrans, transProp.threshold) +
+        scale_color_manual(values = colors)
     })
 
     output$tree <- renderggiraph({
@@ -468,6 +563,7 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
             spotScale = input$SpotSizeButton / 5,
             spotOpacity = spotOpacity() / 100
           ) +
+            scale_fill_manual(values = colors) +
             ggtitle(sprintf("Resolution %s", d_))
         ))
         output[[paste0("plot", d_)]] <- renderPlot(
@@ -483,7 +579,7 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
     output$array <- renderUI({
       lift(div)(
         style = "text-align:center",
-        sort(input$tree_selected) %>%
+        sort(as.numeric(input$tree_selected)) %>%
           map(~paste0("plot", .)) %>%
           keep(~. %in% names(outputOptions(output))) %>%
           map(~div(
@@ -522,11 +618,11 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
       stopApp(returnValue = list(
         tree = tree_plot(),
         piePlots = lapply(
-          setNames(input$tree_selected, input$tree_selected),
+          setNames(nm = input$tree_selected),
           function(x) eval(call(sprintf("array_%s", x)))
         ),
         piePlotsInfo = lapply(
-          setNames(input$tree_selected, input$tree_selected),
+          setNames(nm = input$tree_selected),
           function(x) eval(call(sprintf("array_info_%s", x)))
         )
       ))
