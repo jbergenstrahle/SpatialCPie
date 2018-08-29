@@ -240,7 +240,7 @@ clusterTree <- function(
         x, y,
         data_id = Res,
         color = as.factor(Cluster),
-        size = sqrt(Size),
+        size = Size,
         tooltip = label
       ),
       data = vertices
@@ -263,7 +263,7 @@ clusterTree <- function(
       else NULL
     } +
     labs(alpha = "Proportion", color = "Cluster") +
-    scale_size(guide = "none") +
+    scale_size(guide = "none", range = c(2, 7)) +
     theme_blank()
 }
 
