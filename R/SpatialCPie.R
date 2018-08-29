@@ -311,6 +311,8 @@ clusterTree <- function(
 runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
                 pixel.coords = NULL, transProp.threshold=0.02
 ) {
+  # TODO:TODO: validate input arguments
+
   ui <- miniPage(
     tags$head(tags$style(HTML(".recalculating { position: relative; z-index: -2 }"))),
     gadgetTitleBar("SpatialCPie"),
