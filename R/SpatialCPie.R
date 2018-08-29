@@ -328,13 +328,13 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
     ),
     miniButtonBlock(
       radioButtons("edgeProportions", "Edge proportions:", c("To", "From")),
-      numericInput("edgeThreshold", "Min prop.", max=1, min=0, value=0.05, step=0.01),
+      numericInput("edgeThreshold", "Min proportion:", max=1, min=0, value=0.05, step=0.01),
       radioButtons("edgeLabels", "Edge labels:", c("Show", "Hide")),
-      if (!is.null(img)) radioButtons("imgButton", "HE image:", c("Show", "Hide"))
+      if (!is.null(img)) radioButtons("showImage", "HE image:", c("Show", "Hide"))
       else NULL,
-      numericInput("simC", "C", max=10, min=0.1, value=1, step=0.2),
-      numericInput("OpacityButton", "Opacity", max=100, min=1, value=100, step=10),
-      numericInput("SpotSizeButton", "Size", max=10, min=1, value=5, step=1)
+      numericInput("simC", "Score multiplier:", max=10, min=0.1, value=1, step=0.2),
+      numericInput("spotOpacity", "Opacity:", max=100, min=1, value=100, step=10),
+      numericInput("spotSize", "Size:", max=10, min=1, value=5, step=1)
     )
   )
 
@@ -473,13 +473,23 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
 
   server <- function(input, output, session) {
     ###
+    ## INPUTS
+    edgeProportions <- reactive({ input$edgeProportions })
+    edgeThreshold   <- reactive({ input$edgeThreshold   }) %>% debounce(500)
+    edgeLabels      <- reactive({ input$edgeLabels      })
+    showImage       <- reactive({ input$showImage       })
+    scoreMultiplier <- reactive({ input$simC            }) %>% debounce(500)
+    spotOpacity     <- reactive({ input$spotOpacity     }) %>% debounce(500)
+    spotSize        <- reactive({ input$spotSize        }) %>% debounce(500)
+
+    ###
     ## CLUSTER TREE
     treePlot <- reactive({
       clusterTree(
         do.call(cbind, clusterAssignments),
-        transitionProportions = input$edgeProportions,
-        transitionLabels = input$edgeLabels == "Show",
-        transitionThreshold = input$edgeThreshold
+        transitionProportions = edgeProportions(),
+        transitionLabels = edgeLabels() == "Show",
+        transitionThreshold = edgeThreshold()
       ) +
         scale_color_manual(values = colors)
     })
@@ -552,7 +562,7 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
         infoName <- sprintf("array_info_%s", d_)
         plotName <- sprintf("array_%s", d_)
         assign(envir = parent.frame(), infoName, reactive(
-          likeness(distances[[d_]], input$simC)
+          likeness(distances[[d_]], scoreMultiplier())
         ))
         assign(envir = parent.frame(), plotName, reactive(
           arrayPlot(
@@ -561,7 +571,7 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
             image =
               if (!is.null(img) &&
                   !is.null(pixel.coords) &&
-                  input$imgButton == "Show")
+                  showImage() == "Show")
                 rasterGrob(
                   img,
                   width = unit(1, "npc"),
@@ -569,8 +579,8 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
                   interpolate = TRUE
                 )
               else NULL,
-            spotScale = input$SpotSizeButton / 5,
-            spotOpacity = input$OpacityButton / 100
+            spotScale = spotSize() / 5,
+            spotOpacity = spotOpacity() / 100
           ) +
             scale_fill_manual(values = colors) +
             ggtitle(sprintf("Resolution %s", d_))
