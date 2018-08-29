@@ -554,9 +554,9 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
     ###
     ## ARRAY PLOT
     for (d in tail(names(distances), -1)) {
-      # We evaluate the below block in a new frame (by calling an anonymous
-      # function) in order to protect the value of `d`, which will have changed
-      # when the reactive expressions are evaluated
+      # We evaluate the below block in a new frame (with anonymous function
+      # call) in order to protect the value of `d`, which will have changed when
+      # the reactive expressions are evaluated
       (function() {
         d_ <- d
         infoName <- sprintf("array_info_%s", d_)
