@@ -93,13 +93,13 @@ arrayPlot <- function(scores, coordinates, image = NULL, spotScale = 1,
 #'
 #' Creates the clustering tree.
 #' @param graph graph of the clustering tree, as received from `CPieClust`.
-#' @param transitionLabels how to compute and display edge labels. Valid values
+#' @param transitionProportions how to compute and display edge labels. Valid values
 #' are:
-#' * `NULL`: Don't show any edge labels.
 #' * `"To"`: Proportions are computed based on the number of features in the
 #' higher resolution cluster.
 #' * `"From"`: Proportions are computed based on the number of features in the
 #' lower resolution cluster.
+#' @param transitionLabels Show transition proportion labels.
 #' @return ggplot object of the clustering tree.
 #' @keywords internal
 #' @import ggplot2 purrr ggiraph ggnetwork intergraph
@@ -111,9 +111,15 @@ arrayPlot <- function(scores, coordinates, image = NULL, spotScale = 1,
 #' @importFrom utils tail
 clusterTree <- function(
   assignments,
-  transitionLabels = NULL,
+  transitionProportions = "To",
+  transitionLabels = FALSE,
   transitionThreshold = 0.0
 ) {
+  if (!transitionProportions %in% c("From", "To")) {
+    stop(sprintf("Invalid value `transitionProportions`: %s",
+                 str(transitionProportions)))
+  }
+
   ## Compute edges
   # Loop over resolutions
   transitions <- lapply(seq_len(ncol(assignments) - 1), function(i) {
@@ -147,18 +153,18 @@ clusterTree <- function(
       to.size <- sum(is.to)
 
       # Get the proportions of ST-spots moving along this edge
-      trans.prop.from <- trans.count / from.size
-      trans.prop.to <- trans.count / to.size
+      trans.prop <-
+        if (transitionProportions == "From") trans.count / from.size
+        else trans.count / to.size
 
-      return(c(trans.count, trans.prop.from, trans.prop.to))
+      return(c(trans.count, trans.prop))
     })
 
     # Tidy up the results
     trans.df$FromRes <- as.numeric(gsub("res.", "", from.res))
     trans.df$ToRes <- as.numeric(gsub("res.", "", to.res))
     trans.df$TransCount <- trans[1, ]
-    trans.df$TransPropFrom <- trans[2, ]
-    trans.df$TransPropTo <- trans[3, ]
+    trans.df$TransProp <- trans[2, ]
 
     return(trans.df)
   })
@@ -186,10 +192,6 @@ clusterTree <- function(
 
   ## Construct graph
   graph <- transitions %>%
-    # Remove edges without any cell...
-    filter(TransCount > 0) %>%
-    # ...or making up only a small proportion of the new cluster
-    filter(TransPropTo > transitionThreshold) %>%
     # Rename the nodes
     mutate(FromNode = paste0("R", FromRes, "C", FromClust)) %>%
     mutate(ToNode = paste0("R", ToRes, "C", ToClust)) %>%
@@ -210,16 +212,21 @@ clusterTree <- function(
     vertices$Cluster
   )
 
-  edges <- cbind(
-    igraph::get.edgelist(graph) %>%
-      array_branch(1) %>%
-      map(lift(function(from, to) {
-        cbind(vertices[from, c("x", "y")], vertices[to, c("x", "y")] %>%
-              `colnames<-`(c("xend", "yend")))
-      })) %>%
-      invoke(rbind, .),
-    igraph::get.edge.attribute(graph) %>% as.data.frame
-  )
+  edges <- c(
+    igraph::get.edgelist(graph) %>% array_branch(2) %>%
+      `names<-`(c("from", "to")),
+    igraph::get.edge.attribute(graph)
+  ) %>%
+    transpose %>%
+    discard(lift(
+      function(TransProp, ...) TransProp < transitionThreshold
+    )) %>%
+    map(lift(function(from, to, ...) {
+      cbind(vertices[from, c("x", "y")], vertices[to, c("x", "y")] %>%
+        `colnames<-`(c("xend", "yend"))) %>%
+        cbind(...)
+    })) %>%
+    invoke(rbind, .)
 
   # Drop root vertex; root should not be selectable
   vertices <- vertices[rownames(vertices) != "R1C1", ]
@@ -230,7 +237,7 @@ clusterTree <- function(
       aes(
         x, y,
         xend = xend, yend = yend,
-        alpha = TransPropTo
+        alpha = TransProp
       ),
       col = "black",
       data = edges
@@ -246,16 +253,13 @@ clusterTree <- function(
       data = vertices
     ) +
     {
-      if (!is.null(transitionLabels) && transitionLabels %in% c("To", "From"))
+      if (isTRUE(transitionLabels))
         geom_label_repel(
           aes(
             x = (x + xend) / 2,
             y = (y + yend) / 2,
-            color = if (transitionLabels == "To") ToClust else FromClust,
-            label = round(
-              if (transitionLabels == "To") TransPropTo else TransPropFrom,
-              2
-            )
+            color = if (transitionProportions == "To") ToClust else FromClust,
+            label = round(TransProp, 2)
           ),
           data = edges,
           show.legend = FALSE
