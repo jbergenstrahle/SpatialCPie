@@ -102,13 +102,13 @@ arrayPlot <- function(scores, coordinates, image = NULL, spotScale = 1,
 #' @param transitionLabels Show transition proportion labels.
 #' @return ggplot object of the clustering tree.
 #' @keywords internal
-#' @import ggplot2 purrr ggiraph ggnetwork intergraph
+#' @import ggplot2 purrr ggiraph intergraph
 #' @importFrom dplyr filter group_by mutate n select summarise ungroup
 #' @importFrom igraph graph_from_data_frame layout.reingold.tilford
 #' @importFrom ggrepel geom_label_repel
 #' @importFrom tidyr gather
 #' @importFrom tidyselect everything
-#' @importFrom utils tail
+#' @importFrom utils str tail
 clusterTree <- function(
   assignments,
   transitionProportions = "To",
@@ -288,7 +288,8 @@ clusterTree <- function(
 #' @keywords arrayplot arraypieplot clustertree
 #' @export
 #' @import shiny miniUI ggplot2 grid zeallot grid purrr readr
-#' @importFrom stats setNames
+#' @importFrom stats prcomp setNames
+#' @importFrom utils head tail
 #' @examples
 #' options(device.ask.default = FALSE)
 #'
@@ -346,7 +347,7 @@ runCPie <- function(
     clusterAssignments,
     function(assignments) {
       oldLabels <- unique(assignments)
-      newLabels <- setNames(1:length(oldLabels), nm = oldLabels)
+      newLabels <- setNames(seq_along(oldLabels), nm = oldLabels)
       setNames(newLabels[as.character(assignments)], nm = names(assignments))
     }
   )
@@ -386,7 +387,7 @@ runCPie <- function(
            x_ <- x
            x_ <- do.call(rbind, c(list(x_), rep(list(rep(0, n)), n - nfrom)))
            x_ <- do.call(cbind, c(list(x_), rep(list(rep(0, n)), n - nto)))
-           lpSolve::lp.assign(-x_)$solution[1:nfrom, 1:nto, drop = FALSE] %>%
+           lpSolve::lp.assign(-x_)$solution[seq_len(nfrom), seq_len(nto), drop = FALSE] %>%
              `colnames<-`(colnames(x)) %>%
              `rownames<-`(rownames(x))
         })
@@ -620,6 +621,7 @@ runCPie <- function(
     ## EXPORT
     observeEvent(input$done, {
       stopApp(returnValue = list(
+        clusters = clusterAssignments,
         tree = treePlot(),
         piePlots = lapply(
           setNames(nm = input$tree_selected),
@@ -635,7 +637,7 @@ runCPie <- function(
     ###
     ## STARTUP
     session$onFlushed(function() {
-      session$sendCustomMessage("tree_set", names(distances))
+      session$sendCustomMessage("tree_set", tail(names(distances), -1))
     })
   }
 

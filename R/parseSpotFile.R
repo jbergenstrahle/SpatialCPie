@@ -7,6 +7,7 @@
 #' ST spot detector tool (https://github.com/SpatialTranscriptomicsResearch/st_spot_detector).
 #' @keywords spotdetector
 #' @export
+#' @importFrom utils read.table
 #' @examples
 #' ## Create spot file
 #' data <- matrix(
