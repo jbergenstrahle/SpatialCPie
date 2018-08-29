@@ -313,31 +313,50 @@ clusterTree <- function(
 #' ## run SpatialCPie
 #' runCPie(counts, clusterAssignments)
 runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
-                pixel.coords = NULL, transProp.threshold=0.02
+                pixel.coords = NULL
 ) {
   # TODO:TODO: validate input arguments
 
   ui <- miniPage(
     tags$head(tags$style(HTML(".recalculating { position: relative; z-index: -2 }"))),
     gadgetTitleBar("SpatialCPie"),
-    miniTabstripPanel(
-      miniTabPanel("Visualize", icon = icon("area-chart"),
-                   miniContentPanel(
-                     fillPage(
-                       uiOutput("array"),
-                       ggiraphOutput("tree")
-                     )
-                   ),
-                   miniButtonBlock(
-                     radioButtons("showTrans", "Edge labels:", c("None", "From", "To")),
-                     if (!is.null(img)) radioButtons("imgButton", "HE image:", c("Show", "Hide"))
-                     else NULL,
-                     numericInput("simC", "C", max=10, min=0.1, value=1, step=0.2),
-                     numericInput("OpacityButton", "Opacity", max=100, min=1, value=100, step=10),
-                     numericInput("SpotSizeButton", "Size", max=10, min=1, value=5, step=1)
-                   ))
+    miniContentPanel(
+      fillPage(
+        uiOutput("array"),
+        ggiraphOutput("tree")
+      )
+    ),
+    miniButtonBlock(
+      radioButtons("edgeProportions", "Edge proportions:", c("To", "From")),
+      numericInput("edgeThreshold", "Min prop.", max=1, min=0, value=0.05, step=0.01),
+      radioButtons("edgeLabels", "Edge labels:", c("Show", "Hide")),
+      if (!is.null(img)) radioButtons("imgButton", "HE image:", c("Show", "Hide"))
+      else NULL,
+      numericInput("simC", "C", max=10, min=0.1, value=1, step=0.2),
+      numericInput("OpacityButton", "Opacity", max=100, min=1, value=100, step=10),
+      numericInput("SpotSizeButton", "Size", max=10, min=1, value=5, step=1)
     )
   )
+
+  # Compute coordinates and intersect spots across resolutions
+  spots <- clusterAssignments %>%
+    map(names) %>%
+    reduce(intersect)
+
+  if (!is.null(pixel.coords) != 0) {
+    spots <- intersect(spots, rownames(pixel.coords))
+    coords <- pixel.coords
+  } else {
+    c(xcoord, ycoord) %<-% {
+       strsplit(spots, "x") %>%
+         transpose %>%
+         map(as.numeric)
+    }
+    coords <- as.data.frame(cbind(x = xcoord, y = ycoord))
+    rownames(coords) <- spots
+  }
+
+  clusterAssignments <- clusterAssignments %>% map(~.[spots])
 
   # Relabel the data, making sure that all labels in resolution r are in 1:r
   clusterAssignments <- lapply(
@@ -353,6 +372,25 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
   names(clusterAssignments) <- clusterAssignments %>% map_int(max)
   clusterAssignments <- clusterAssignments[
     as.character(sort(as.numeric(names(clusterAssignments))))]
+
+  # Add first resolution (corresponding to the root of the tree)
+  if (names(clusterAssignments)[1] != "1") {
+    clusterAssignments <- c(
+      list("1" = setNames(rep(1, length(spots)), nm = spots)),
+      clusterAssignments
+    )
+  }
+
+  # Compute sample-centroid distances
+  distances <- clusterAssignments %>%
+    map(function(assignments) {
+      labels <- unique(assignments)
+      centers <- labels %>%
+        map(~rowMeans(counts[, which(assignments == .), drop = FALSE])) %>%
+        invoke(cbind, .)
+      colnames(centers) <- labels
+      pairwiseDistance(t(centers), t(counts))
+    })
 
   # Relabel the data so as to maximize the number of spots that keep the same
   # label between resolutions
@@ -376,7 +414,7 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
            x_ <- x
            x_ <- do.call(rbind, c(list(x_), rep(list(rep(0, n)), n - nfrom)))
            x_ <- do.call(cbind, c(list(x_), rep(list(rep(0, n)), n - nto)))
-           lpSolve::lp.assign(-x_)$solution[1:nfrom, 1:nto] %>%
+           lpSolve::lp.assign(-x_)$solution[1:nfrom, 1:nto, drop = FALSE] %>%
              `colnames<-`(colnames(x)) %>%
              `rownames<-`(rownames(x))
         })
@@ -434,62 +472,21 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
     colorspace::hex(fixup = TRUE)
 
   server <- function(input, output, session) {
-    treeDf <- lift(cbind)(clusterAssignments)
-    colnames(treeDf) <- apply(treeDf, 2, max)
-    treeDf <- treeDf[, as.character(sort(as.numeric(colnames(treeDf))))]
-
-    # make sure that there's a root node
-    if (colnames(treeDf)[1] > 1) {
-      treeDf <- cbind(rep(1, nrow(treeDf)), treeDf)
-      colnames(treeDf) <- c(1, colnames(treeDf)[2:ncol(treeDf)])
-    }
-
-    # set coordinates of pies
-    if (!is.null(pixel.coords) && length(img) != 0) {
-      grobHE <- rasterGrob(img, width = unit(1, "npc"), height = unit(1, "npc"),
-                           interpolate = TRUE)
-
-      coord_df <- pixel.coords
-      colnames(coord_df) <- c("x", "y")
-    } else {
-      grobHE <- NULL
-
-      spots <- clusterAssignments %>% map(names) %>% reduce(intersect)
-      c(xcoord, ycoord) %<-% {
-         strsplit(spots, "x") %>% transpose %>% map(as.numeric) }
-      coord_df <- as.data.frame(cbind(x = xcoord, y = ycoord))
-      rownames(coord_df) <- spots
-    }
-
-    # compute sample-centroid distances
-    distances <- apply(treeDf[, 2:ncol(treeDf)], 2, function(assignments) {
-      labels <- unique(assignments)
-      centers <- labels %>%
-        map(~rowMeans(counts[, which(assignments == .), drop = FALSE])) %>%
-        invoke(cbind, .)
-      colnames(centers) <- labels
-      pairwiseDistance(t(centers), t(counts))
-    })
-
-    arrayImgInput <- reactive({
-      !is.null(img) &&
-        !is.null(pixel.coords) &&
-        input$imgButton == "Show"
-    })
-
-    spotOpacity <- reactive({
-      input$OpacityButton
-    })
-
-    # -- set up cluster tree output
-    tree_plot <- reactive({
-      clusterTree(treeDf, input$showTrans, transProp.threshold) +
+    ###
+    ## CLUSTER TREE
+    treePlot <- reactive({
+      clusterTree(
+        do.call(cbind, clusterAssignments),
+        transitionProportions = input$edgeProportions,
+        transitionLabels = input$edgeLabels == "Show",
+        transitionThreshold = input$edgeThreshold
+      ) +
         scale_color_manual(values = colors)
     })
 
     output$tree <- renderggiraph({
       plot <- ggiraph(
-        code = print(tree_plot()),
+        code = print(treePlot()),
         hover_css = "stroke:#888;stroke-width:0.2em;stroke-opacity:0.5;",
         selected_css = "stroke:#000;stroke-width:0.2em;stroke-opacity:0.5;"
       )
@@ -502,15 +499,15 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
       # Thus, we instead modify the dependency file directly to include the
       # plot's initial selection.
       if (length(input$tree_selected) > 0) {
-        dep_filename <- paste(
+        dependency <- paste(
           plot$dependencies[[1]]$src$file,
           plot$dependencies[[1]]$script,
           sep = "/"
         )
-        dep_src <- read_file(dep_filename)
+        src <- read_file(dependency)
 
         # Refresh selection annotations when plot is initialized
-        dep_src <- sub(
+        src <- sub(
           "(function init_prop_[^{]*\\{[^}]*)",
           sprintf(
             "\\1refresh_selected('%s', '%s', '%s');",
@@ -518,7 +515,7 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
             plot$x$selected_class,
             plot$x$uid
           ),
-          dep_src
+          src
         )
 
         # Set initial selection
@@ -526,16 +523,16 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
           paste0("'", input$tree_selected, "'"),
           sep = ", "
         ))
-        dep_src <- paste0(
-          dep_src,
+        src <- paste0(
+          src,
           sprintf("%s = %s;", plot$x$sel_array_name, selection_array)
         )
-        dep_src <- paste0(
-          dep_src,
+        src <- paste0(
+          src,
           sprintf("Shiny.setInputValue('tree_selected', %s);", selection_array)
         )
 
-        write_file(dep_src, dep_filename)
+        write_file(src, dependency)
       }
 
       # Remove UI element for lasso selection etc.
@@ -544,30 +541,36 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
       plot
     })
 
-    # Initialize to all resolutions being selected
-    session$onFlushed(function() {
-      session$sendCustomMessage("tree_set", names(distances))
-    })
-
-    # -- set up array plot output
-    for (d in names(distances)) {
+    ###
+    ## ARRAY PLOT
+    for (d in tail(names(distances), -1)) {
       # We evaluate the below block in a new frame (by calling an anonymous
       # function) in order to protect the value of `d`, which will have changed
       # when the reactive expressions are evaluated
       (function() {
         d_ <- d
-        info_name <- sprintf("array_info_%s", d_)
-        plot_name <- sprintf("array_%s", d_)
-        assign(envir = parent.frame(), info_name, reactive(
+        infoName <- sprintf("array_info_%s", d_)
+        plotName <- sprintf("array_%s", d_)
+        assign(envir = parent.frame(), infoName, reactive(
           likeness(distances[[d_]], input$simC)
         ))
-        assign(envir = parent.frame(), plot_name, reactive(
+        assign(envir = parent.frame(), plotName, reactive(
           arrayPlot(
-            scores = eval(call(info_name)),
-            coordinates = coord_df,
-            image = if (arrayImgInput()) grobHE else NULL,
+            scores = eval(call(infoName)),
+            coordinates = coords,
+            image =
+              if (!is.null(img) &&
+                  !is.null(pixel.coords) &&
+                  input$imgButton == "Show")
+                rasterGrob(
+                  img,
+                  width = unit(1, "npc"),
+                  height = unit(1, "npc"),
+                  interpolate = TRUE
+                )
+              else NULL,
             spotScale = input$SpotSizeButton / 5,
-            spotOpacity = spotOpacity() / 100
+            spotOpacity = input$OpacityButton / 100
           ) +
             scale_fill_manual(values = colors) +
             ggtitle(sprintf("Resolution %s", d_))
@@ -575,7 +578,7 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
         output[[paste0("plot", d_)]] <- renderPlot(
           {
             cat(sprintf("Loading resolution \"%s\"...\n", d_))
-            eval(call(plot_name))
+            eval(call(plotName))
           },
           width = 600, height = 600
         )
@@ -620,9 +623,11 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
       )
     })
 
+    ###
+    ## EXPORT
     observeEvent(input$done, {
       stopApp(returnValue = list(
-        tree = tree_plot(),
+        tree = treePlot(),
         piePlots = lapply(
           setNames(nm = input$tree_selected),
           function(x) eval(call(sprintf("array_%s", x)))
@@ -632,6 +637,12 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
           function(x) eval(call(sprintf("array_info_%s", x)))
         )
       ))
+    })
+
+    ###
+    ## STARTUP
+    session$onFlushed(function() {
+      session$sendCustomMessage("tree_set", names(distances))
     })
   }
 

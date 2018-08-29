@@ -35,7 +35,7 @@ parseSpotFile <- function(file){
   spots <- read.table(file, header = TRUE)
   xcoord <- as.numeric(spots$pixel_x)
   ycoord <- as.numeric(spots$pixel_y)
-  coords <- as.data.frame(cbind(pixel_x = xcoord, pixel_y = ycoord))
+  coords <- as.data.frame(cbind(x = xcoord, y = ycoord))
   rownames(coords) <- paste(spots$x, spots$y, sep = "x")
   return(coords)
 }
