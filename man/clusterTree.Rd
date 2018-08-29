@@ -4,19 +4,20 @@
 \alias{clusterTree}
 \title{Cluster tree}
 \usage{
-clusterTree(assignments, transitionLabels = NULL,
-  transitionThreshold = 0)
+clusterTree(assignments, transitionProportions = "To",
+  transitionLabels = FALSE, transitionThreshold = 0)
 }
 \arguments{
-\item{transitionLabels}{how to compute and display edge labels. Valid values
+\item{transitionProportions}{how to compute and display edge labels. Valid values
 are:
 \itemize{
-\item \code{NULL}: Don't show any edge labels.
 \item \code{"To"}: Proportions are computed based on the number of features in the
 higher resolution cluster.
 \item \code{"From"}: Proportions are computed based on the number of features in the
 lower resolution cluster.
 }}
+
+\item{transitionLabels}{Show transition proportion labels.}
 
 \item{graph}{graph of the clustering tree, as received from \code{CPieClust}.}
 }

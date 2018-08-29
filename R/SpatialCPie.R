@@ -123,7 +123,6 @@ clusterTree <- function(
   ## Compute edges
   # Loop over resolutions
   transitions <- lapply(seq_len(ncol(assignments) - 1), function(i) {
-
     # Extract two neighbouring assignments
     from.res <- colnames(assignments)[i]
     to.res <- colnames(assignments)[i + 1]
@@ -292,52 +291,35 @@ clusterTree <- function(
 #' @examples
 #' options(device.ask.default = FALSE)
 #'
-#' ## set up coordinate system
+#' ## Set up coordinate system
 #' coords <- as.matrix(expand.grid(1:10, 1:10))
 #'
-#' ## generate data set with three distinct genes
+#' ## Generate data set with three distinct genes
 #' profiles <- diag(rep(1, 3)) + runif(9)
 #' centers <- cbind(c(5, 2), c(2, 8), c(8, 2))
-#' mixes <- array_branch(coords, 1) %>%
-#'   map(~exp(-colSums((centers-.)^2)/50)) %>%
-#'   map(~./sum(.)) %>%
-#'   invoke(cbind, .)
+#' mixes <- apply(coords, 1, function(x) {
+#'   x <- exp(-colSums((centers-x)^2)/50)
+#'   x / sum(x)
+#' })
 #' means <- 100 * profiles %*% mixes
 #' counts <- matrix(rpois(prod(dim(means)), means), nrow=nrow(profiles))
-#' colnames(counts) <- array_branch(coords, 1) %>% map(~lift(paste)(., sep="x"))
+#' colnames(counts) <- apply(
+#'   coords, 1, function(x) do.call(paste, c(as.list(x), list(sep="x"))))
 #' rownames(counts) <- paste("gene", 1:nrow(counts))
 #'
-#' ## perform clustering
-#' clusterAssignments <- 2:5 %>% map(~kmeans(t(counts), centers=.)$cluster)
+#' ## Perform clustering
+#' clusterAssignments <- lapply(
+#'   2:5, function(x) kmeans(t(counts), centers=x)$cluster)
 #'
-#' ## run SpatialCPie
+#' ## Run SpatialCPie
 #' runCPie(counts, clusterAssignments)
-runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
-                pixel.coords = NULL
+runCPie <- function(
+  counts,
+  clusterAssignments,
+  img = NULL,
+  view = "dialog",
+  pixel.coords = NULL
 ) {
-  # TODO:TODO: validate input arguments
-
-  ui <- miniPage(
-    tags$head(tags$style(HTML(".recalculating { position: relative; z-index: -2 }"))),
-    gadgetTitleBar("SpatialCPie"),
-    miniContentPanel(
-      fillPage(
-        uiOutput("array"),
-        ggiraphOutput("tree")
-      )
-    ),
-    miniButtonBlock(
-      radioButtons("edgeProportions", "Edge proportions:", c("To", "From")),
-      numericInput("edgeThreshold", "Min proportion:", max=1, min=0, value=0.05, step=0.01),
-      radioButtons("edgeLabels", "Edge labels:", c("Show", "Hide")),
-      if (!is.null(img)) radioButtons("showImage", "HE image:", c("Show", "Hide"))
-      else NULL,
-      numericInput("simC", "Score multiplier:", max=10, min=0.1, value=1, step=0.2),
-      numericInput("spotOpacity", "Opacity:", max=100, min=1, value=100, step=10),
-      numericInput("spotSize", "Size:", max=10, min=1, value=5, step=1)
-    )
-  )
-
   # Compute coordinates and intersect spots across resolutions
   spots <- clusterAssignments %>%
     map(names) %>%
@@ -380,17 +362,6 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
       clusterAssignments
     )
   }
-
-  # Compute sample-centroid distances
-  distances <- clusterAssignments %>%
-    map(function(assignments) {
-      labels <- unique(assignments)
-      centers <- labels %>%
-        map(~rowMeans(counts[, which(assignments == .), drop = FALSE])) %>%
-        invoke(cbind, .)
-      colnames(centers) <- labels
-      pairwiseDistance(t(centers), t(counts))
-    })
 
   # Relabel the data so as to maximize the number of spots that keep the same
   # label between resolutions
@@ -458,12 +429,23 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
   ) %>%
     setNames(names(clusterAssignments))
 
+  # Compute sample-centroid distances
+  distances <- clusterAssignments %>%
+    map(function(assignments) {
+      labels <- unique(assignments)
+      centers <- labels %>%
+        map(~rowMeans(counts[, which(assignments == .), drop = FALSE])) %>%
+        invoke(cbind, .)
+      colnames(centers) <- labels
+      pairwiseDistance(t(centers), t(counts))
+    })
+
   # Compute colors so that dissimilar clusters are far away in color space
   maxRes <- tail(clusterAssignments, 1)[[1]]
   pca <- sort(unique(maxRes)) %>%
     map(~rowMeans(counts[, maxRes == ., drop = FALSE])) %>%
     invoke(rbind, .) %>%
-    prcomp(rank = 2, center = T) %>%
+    prcomp(rank = 2, center = TRUE) %>%
     `$`("x")
   colors <- colorspace::LAB(cbind(
     rep(50, nrow(pca)),
@@ -502,8 +484,8 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
       )
 
       # Copy selection from the previous tree
-      # Note: This could also have been done by sending the `'tree_set'` message
-      # on the `'onFlushed'` event. However, that would create a race condition
+      # Note: This could also have been done by sending the `"tree_set"` message
+      # on the `"onFlushed"` event. However, that would create a race condition
       # between the message and the browser's loading of the ggiraph dependency
       # file; if the latter is loaded last, the selection would be overwritten.
       # Thus, we instead modify the dependency file directly to include the
@@ -590,7 +572,7 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
             cat(sprintf("Loading resolution \"%s\"...\n", d_))
             eval(call(plotName))
           },
-          width = 600, height = 600
+          width = 400, height = 400
         )
       })()
     }
@@ -606,8 +588,8 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
             div(
               style = paste(
                 "position: relative;",
-                "width: 600px;",
-                "height: 600px;"
+                "width: 400px;",
+                "height: 400px;"
               ),
               list(
                 plotOutput(.),
@@ -666,5 +648,36 @@ runCPie <- function(counts, clusterAssignments, img = NULL, view = "dialog",
     viewer <- dialogViewer("")
   }
 
-  runGadget(ui, server, viewer = viewer)
+  runGadget(
+    server = server,
+    viewer = viewer,
+    app = miniPage(
+      tags$head(tags$style(HTML(".recalculating { position: relative; z-index: -2 }"))),
+      gadgetTitleBar("SpatialCPie"),
+      miniContentPanel(
+        fillPage(
+          sidebarLayout(
+            sidebarPanel(width = 3,
+              radioButtons("edgeLabels", "Edge labels:", c("Show", "Hide")),
+              radioButtons("edgeProportions", "Edge proportions:", c("To", "From")),
+              numericInput("edgeThreshold", "Min proportion:", max = 1, min = 0, value = 0.05, step = 0.01)
+            ),
+            div(style = "text-align: center", mainPanel(ggiraphOutput("tree")))
+          ),
+          hr(),
+          sidebarLayout(
+            sidebarPanel(width = 3,
+              if (!is.null(img))
+                radioButtons("showImage", "HE image:", c("Show", "Hide"))
+              else NULL,
+              numericInput("simC", "Score multiplier:", max = 10, min = 0.1, value = 1, step = 0.2),
+              numericInput("spotOpacity", "Opacity:", max = 100, min = 1, value = 100, step = 10),
+              numericInput("spotSize", "Size:", max = 10, min = 1, value = 5, step = 1)
+            ),
+            mainPanel(uiOutput("array"))
+          )
+        )
+      )
+    )
+  )
 }

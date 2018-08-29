@@ -5,7 +5,7 @@
 \title{SpatialCPie gadget}
 \usage{
 runCPie(counts, clusterAssignments, img = NULL, view = "dialog",
-  pixel.coords = NULL, transProp.threshold = 0.02)
+  pixel.coords = NULL)
 }
 \arguments{
 \item{counts}{gene count matrix.}
@@ -33,25 +33,27 @@ Runs the SpatialCPie gadget
 \examples{
 options(device.ask.default = FALSE)
 
-## set up coordinate system
+## Set up coordinate system
 coords <- as.matrix(expand.grid(1:10, 1:10))
 
-## generate data set with three distinct genes
+## Generate data set with three distinct genes
 profiles <- diag(rep(1, 3)) + runif(9)
 centers <- cbind(c(5, 2), c(2, 8), c(8, 2))
-mixes <- array_branch(coords, 1) \%>\%
-  map(~exp(-colSums((centers-.)^2)/50)) \%>\%
-  map(~./sum(.)) \%>\%
-  invoke(cbind, .)
+mixes <- apply(coords, 1, function(x) {
+  x <- exp(-colSums((centers-x)^2)/50)
+  x / sum(x)
+})
 means <- 100 * profiles \%*\% mixes
 counts <- matrix(rpois(prod(dim(means)), means), nrow=nrow(profiles))
-colnames(counts) <- array_branch(coords, 1) \%>\% map(~lift(paste)(., sep="x"))
+colnames(counts) <- apply(
+  coords, 1, function(x) do.call(paste, c(as.list(x), list(sep="x"))))
 rownames(counts) <- paste("gene", 1:nrow(counts))
 
-## perform clustering
-clusterAssignments <- 2:5 \%>\% map(~kmeans(t(counts), centers=.)$cluster)
+## Perform clustering
+clusterAssignments <- lapply(
+  2:5, function(x) kmeans(t(counts), centers=x)$cluster)
 
-## run SpatialCPie
+## Run SpatialCPie
 runCPie(counts, clusterAssignments)
 }
 \keyword{arraypieplot}
