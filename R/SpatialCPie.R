@@ -191,6 +191,7 @@ clusterTree <- function(
 
   ## Construct graph
   graph <- transitions %>%
+    filter(TransCount > 0) %>%
     # Rename the nodes
     mutate(FromNode = paste0("R", FromRes, "C", FromClust)) %>%
     mutate(ToNode = paste0("R", ToRes, "C", ToClust)) %>%
