@@ -11,7 +11,10 @@ package: "SpatialCPie"
 output:
   BiocStyle::html_document
 abstract: |
-  SpatialCPie is an R package designed to facilitate cluster evaluation for spatial transcriptomics data by providing intuitive visualizations that display the relationship between clusters in order to guide the user during cluster identification, selection and further downstream applications
+  SpatialCPie is an R package designed to facilitate cluster evaluation for
+  spatial transcriptomics data by providing intuitive visualizations that
+  display the relationship between clusters in order to guide the user during
+  cluster identification, selection and further downstream applications
 vignette: |
   %\VignetteIndexEntry{SpatialCPie}
   %\VignetteEngine{knitr::rmarkdown}
