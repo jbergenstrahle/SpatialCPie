@@ -173,56 +173,32 @@
         ))
     }
 
-    transitions <- lapply(seq_len(ncol(assignments) - 1), function(i) {
-        fromResolution <- colnames(assignments)[i]
-        toResolution <- colnames(assignments)[i + 1]
-        cbind(
-            fromResolution = as.numeric(fromResolution),
-            toResolution = as.numeric(toResolution),
-            expand.grid(
-                fromCluster = sort(unique(assignments[, fromResolution])),
-                toCluster = sort(unique(assignments[, toResolution]))
-            ) %>%
-                transpose %>%
-                map(lift(function(fromCluster, toCluster) {
-                    isFrom <- assignments[, fromResolution] == fromCluster
-                    isTo <- assignments[, toResolution] == toCluster
-                    count <- sum(isFrom & isTo)
-                    prop <- if (transitionProportions == "From")
-                                count / sum(isFrom)
-                            else count / sum(isTo)
-                    c(
-                        fromCluster = fromCluster,
-                        toCluster = toCluster,
-                        transCount = count,
-                        transProp = prop
-                    )
-                })) %>%
-                invoke(rbind, .)
-        )
-    }) %>%
-        invoke(rbind, .) %>%
-        as.data.frame %>%
-        mutate(fromCluster = factor(fromCluster)) %>%
-        mutate(toCluster = factor(toCluster))
-    browser()
+    data <- assignments %>% as.data.frame %>%
+        rownames_to_column("spot") %>%
+        gather(resolution, cluster, -spot, convert = TRUE) %>%
+        mutate(node = sprintf("R%dC%d", resolution, cluster))
 
     graph <- graph_from_data_frame(
-        transitions %>%
-            filter(transCount > 0) %>%
-            mutate(fromNode = paste0("R", fromResolution, "C", fromCluster)) %>%
-            mutate(toNode = paste0("R", toResolution, "C", toCluster)) %>%
-            select(fromNode, toNode, everything()),
-        vertices = assignments %>%
-            as.data.frame %>%
-            gather(key = resolution, value = cluster) %>%
-            group_by(resolution, cluster) %>%
-            summarize(size = n()) %>%
-            ungroup() %>%
-            mutate(resolution = as.numeric(resolution)) %>%
-            mutate(cluster = as.numeric(cluster)) %>%
-            mutate(node = paste0("R", resolution, "C", cluster)) %>%
-            select(node, everything())
+        d = data %>%
+            mutate(toResolution = resolution + 1) %>%
+            (function(x) inner_join(
+                x,
+                x %>% select(everything(), toCluster = cluster, toNode = node),
+                by = c("spot", "toResolution" = "resolution")
+            )) %>%
+            group_by(node, toNode, cluster, toCluster) %>%
+            summarize(transCount = n()) %>%
+            (function(x) {
+                groupingVar <-
+                    if (transitionProportions == "To") quo(toNode)
+                    else quo(node)
+                group_by(x, !!groupingVar)
+            }) %>%
+            mutate(transProp = transCount / sum(transCount)) %>%
+            select(node, toNode, everything()),
+        vertices = data %>%
+            group_by(node, resolution, cluster) %>%
+            summarize(size = n())
     )
 
     vertices <- cbind(
@@ -230,11 +206,7 @@
         igraph::get.vertex.attribute(graph) %>%
             as.data.frame(stringsAsFactors = FALSE)
     ) %>%
-        mutate(label = sprintf(
-            "(resolution %d; cluster %d)",
-            resolution,
-            cluster
-        ))
+        mutate(label = sprintf("%s: %d", name, size))
 
     edges <- c(
         igraph::get.edgelist(graph) %>% array_branch(2) %>%
@@ -265,7 +237,7 @@
         geom_point_interactive(
             aes(
                 x, y,
-                data_id = resolution,
+                data_id = as.factor(resolution),
                 color = as.factor(cluster),
                 size = size,
                 tooltip = label
@@ -278,8 +250,10 @@
                     aes(
                         x = (x + xend) / 2,
                         y = (y + yend) / 2,
-                        color = if (transitionProportions == "To") toCluster
-                                else fromCluster,
+                        color = as.factor(
+                            if (transitionProportions == "To") toCluster
+                            else cluster
+                        ),
                         label = round(transProp, 2)
                     ),
                     data = edges,
