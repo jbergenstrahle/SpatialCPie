@@ -25,6 +25,7 @@ Imports:
     scatterpie (>= 0.1.2),
     shiny (>= 1.1.0),
     stats (>= 3.5.0),
+    tibble (>= 1.4.2),
     tidyr (>= 0.8.1),
     tidyselect (>= 0.2.4),
     utils (>= 3.5.0),
