@@ -2,15 +2,15 @@
 % Please edit documentation in R/SpatialCPie.R
 \name{runCPie}
 \alias{runCPie}
-\title{SpatialCPie gadget}
+\title{Run SpatialCPie}
 \usage{
-runCPie(counts, clusterAssignments, img = NULL, view = "dialog",
+runCPie(counts, assignments, img = NULL, view = NULL,
   pixel.coords = NULL)
 }
 \arguments{
 \item{counts}{gene count matrix.}
 
-\item{clusterAssignments}{list of cluster assignments for each resolution.}
+\item{assignments}{list of cluster assignments for each resolution.}
 
 \item{img}{image to be used as background to the plot (optional).\cr
 Note: For the tissue image to be correctly aligned to the spatial areas, the
@@ -21,8 +21,6 @@ Available options: "dialog" (default), "browser", "pane".}
 
 \item{pixel.coords}{\code{data.frame} with pixel coordinates (optional).
 The rows should correspond to the columns (spatial areas) in the count file.}
-
-\item{transProp.threshold}{threshold value for which transitions that are shown in the clustering tree.}
 }
 \value{
 FIXME
@@ -40,21 +38,21 @@ coords <- as.matrix(expand.grid(1:10, 1:10))
 profiles <- diag(rep(1, 3)) + runif(9)
 centers <- cbind(c(5, 2), c(2, 8), c(8, 2))
 mixes <- apply(coords, 1, function(x) {
-  x <- exp(-colSums((centers-x)^2)/50)
-  x / sum(x)
+    x <- exp(-colSums((centers-x)^2)/50)
+    x / sum(x)
 })
 means <- 100 * profiles \%*\% mixes
 counts <- matrix(rpois(prod(dim(means)), means), nrow=nrow(profiles))
 colnames(counts) <- apply(
-  coords, 1, function(x) do.call(paste, c(as.list(x), list(sep="x"))))
+    coords, 1, function(x) do.call(paste, c(as.list(x), list(sep="x"))))
 rownames(counts) <- paste("gene", 1:nrow(counts))
 
 ## Perform clustering
-clusterAssignments <- lapply(
-  2:5, function(x) kmeans(t(counts), centers=x)$cluster)
+assignments <- lapply(
+    2:5, function(x) kmeans(t(counts), centers=x)$cluster)
 
 ## Run SpatialCPie
-runCPie(counts, clusterAssignments)
+runCPie(counts, assignments)
 }
 \keyword{arraypieplot}
 \keyword{arrayplot}
