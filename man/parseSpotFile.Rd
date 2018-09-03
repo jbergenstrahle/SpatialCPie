@@ -2,7 +2,7 @@
 % Please edit documentation in R/parseSpotFile.R
 \name{parseSpotFile}
 \alias{parseSpotFile}
-\title{Parsing of spot detector output}
+\title{Parse spot detector output}
 \usage{
 parseSpotFile(file)
 }
@@ -10,7 +10,8 @@ parseSpotFile(file)
 \item{file}{spot file}
 }
 \value{
-FIXME
+\code{data.frame} with columns "x" and "y" specifying the pixel
+coordinates of each spot
 }
 \description{
 Parses the output from the ST spot detector tool for use with SpatialCPie.

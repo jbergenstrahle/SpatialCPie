@@ -1,27 +1,97 @@
+#' @importFrom dplyr
+#' filter group_by inner_join mutate n select summarize ungroup
+#' @importFrom ggiraph geom_point_interactive
+#' @importFrom ggplot2
+#' aes coord_fixed element_blank geom_segment ggplot ggtitle guides guide_legend
+#' labs
+#' theme theme_bw
+#' scale_color_manual scale_fill_manual scale_size
+#' scale_x_continuous scale_y_continuous
+#' @importFrom grid unit
+#' @importFrom purrr
+#' %>% %||% array_branch lift invoke keep map map_dbl map_int partial reduce
+#' transpose
+#' @importFrom readr read_file write_file
+#' @importFrom shiny debounce observeEvent reactive
+#' @importFrom stats dist setNames
+#' @importFrom tibble rownames_to_column
+#' @importFrom tidyr gather spread
+#' @importFrom tidyselect everything quo
+#' @importFrom utils head tail
+#' @importFrom utils str
+#' @importFrom zeallot %<-%
+"_PACKAGE"
+
+
+## Pre-declare all NSE variables as global in order to appease R CMD check
+## (ref: https://stackoverflow.com/a/12429344)
+globalVariables(c(
+    ".",
+    "accAssignments",
+    "accReassignments",
+    "assignment",
+    "cluster",
+    "gene",
+    "label",
+    "name",
+    "node",
+    "resolution",
+    "size",
+    "spot",
+    "toCluster",
+    "toNode",
+    "transCount",
+    "transProp",
+    "x",
+    "xcoord",
+    "xend",
+    "y",
+    "yend",
+    "ycoord",
+    NULL
+))
+
+
 #' Likeness score
 #'
+#' @param d (n, K) distance matrix
+#' @param c log multiplier
+#' @return (n, K) scoring matrix
 #' @keywords internal
-.likeness <- function(d, c = 1.0) {
+.likeness <- function(
+    d,
+    c = 1.0
+) {
     score <- exp(-c * d)
     score / rowSums(score)
 }
 
+
 #' Pair-wise distances
 #'
+#' @param a (n, d) matrix of points
+#' @param b (m, d) matrix of points
+#' @param d distance function (with signature \[Num\] -> \[\[Num\]\] -> \[Num\])
+#' @return (m, n) matrix of distances
 #' @keywords internal
-#' @import purrr
 .pairwiseDistance <- function(
-    a, b, d = function(xs, y) sqrt(colSums((t(xs) - y) ^ 2))
+    a,
+    b,
+    d = function(x, ys) sqrt(colSums((t(ys) - x) ^ 2))
 ) {
-    apply(a, 1, partial(d, b))
+    apply(a, 1, partial(d, ys = b))
 }
+
 
 #' Maximize overlap
 #'
-#' Given a list of of lists with labels, relabel the lists so as to maximize the
-#' overlap between labels in consecutive lists.
+#' @param xs list of lists of labels
+#' @return `xs`, relabeled so as to maximize the overlap between labels in
+#' consecutive label lists
 #' @keywords internal
-.maximizeOverlap <- function(xs) {
+.maximizeOverlap <- function(
+    xs
+) {
     reassignments <- list(
         unname(head(xs, -1)),
         unname(tail(xs, -1))
@@ -94,11 +164,17 @@
         setNames(names(xs))
 }
 
+
 #' Array pie plot
 #'
+#' @param scores (n, K) scoring matrix
+#' @param coordinates `data.frame` with `rownames` matching those in `scores`
+#' and columns `x` and `y` specifying the plotting position of each observation
+#' @param image a `grob` to use as background to the plots
+#' @param spotScale pie chart size
+#' @param spotOpacity pie chart opacity
+#' @return `ggplot` object of the pie plot
 #' @keywords internal
-#' @import ggplot2 purrr scatterpie zeallot
-#' @importFrom stats dist
 .arrayPlot <- function(
     scores,
     coordinates,
@@ -122,7 +198,7 @@
         xmax <- min(xmax, ncol(image$raster))
 
         image$raster <- image$raster[ymin:ymax, xmin:xmax]
-        annotation <- annotation_custom(image, -Inf, Inf, -Inf, Inf)
+        annotation <- ggplot2::annotation_custom(image, -Inf, Inf, -Inf, Inf)
     } else {
         annotation <- NULL
     }
@@ -131,7 +207,7 @@
 
     ggplot() +
         annotation +
-        geom_scatterpie(
+        scatterpie::geom_scatterpie(
             mapping = aes(x = x, y = y, r = r),
             data = cbind(scores[spots, ], coordinates[spots, ]),
             cols = colnames(scores),
@@ -149,17 +225,21 @@
         )
 }
 
+
 #' Cluster tree
 #'
+#' @param (n, R) assignment matrix, where R is the number of resolutions
+#' @param transitionProportions how to compute the transition proportions.
+#' Possible values are:
+#' - `"From"`: based on the total number of assignments in the lower-resolution
+#' cluster
+#' - `"To"`: based on the total number of assignments in the higher-resolution
+#' cluster
+#' @param transitionLabels show edge labels
+#' @param transitionThreshold hide edges with transition proportions below this
+#' threshold
+#' @return `ggplot` object of the cluster tree
 #' @keywords internal
-#' @import ggplot2 purrr ggiraph intergraph
-#' @importFrom dplyr filter group_by inner_join mutate n select summarise
-#' @importFrom dplyr ungroup
-#' @importFrom igraph graph_from_data_frame layout.reingold.tilford
-#' @importFrom ggrepel geom_label_repel
-#' @importFrom tidyr gather
-#' @importFrom tidyselect everything
-#' @importFrom utils str tail
 .clusterTree <- function(
     assignments,
     transitionProportions = "To",
@@ -178,7 +258,7 @@
         gather(resolution, cluster, -spot, convert = TRUE) %>%
         mutate(node = sprintf("R%dC%d", resolution, cluster))
 
-    graph <- graph_from_data_frame(
+    graph <- igraph::graph_from_data_frame(
         d = data %>%
             mutate(toResolution = resolution + 1) %>%
             (function(x) inner_join(
@@ -202,7 +282,7 @@
     )
 
     vertices <- cbind(
-        layout.reingold.tilford(graph) %>% `colnames<-`(c("x", "y")),
+        igraph::layout.reingold.tilford(graph) %>% `colnames<-`(c("x", "y")),
         igraph::get.vertex.attribute(graph) %>%
             as.data.frame(stringsAsFactors = FALSE)
     ) %>%
@@ -246,7 +326,7 @@
         ) +
         {
             if (isTRUE(transitionLabels))
-                geom_label_repel(
+                ggrepel::geom_label_repel(
                     aes(
                         x = (x + xend) / 2,
                         y = (y + yend) / 2,
@@ -265,17 +345,29 @@
         scale_size(guide = "none", range = c(2, 7))
 }
 
+
 #' SpatialCPie server
 #'
+#' @param distances list of spot-cluster distance matrices, one for each
+#' resolution
+#' @param colors vector of colors for each cluster label
+#' @param image background image for the array plots, passed to
+#' `grid::rasterGrob()`
+#' @param coordinates `data.frame` with `rownames` matching the `names` in
+#' `scores` and columns `x` and `y` specifying the plotting position of each
+#' observation
+#' @return server function, to be passed to `shiny::shinyApp()`
 #' @keywords internal
 .makeServer <- function(
-    counts,
-    assignments,
     distances,
     colors,
-    img,
-    coords
+    image,
+    coordinates
 ) {
+    assignments <- distances %>%
+        map(~apply(., 1, function(x) as.numeric(colnames(.))[which.min(x)])) %>%
+        invoke(cbind, .)
+
     function(input, output, session) {
         ###
         ## INPUTS
@@ -291,7 +383,7 @@
         ## CLUSTER TREE
         treePlot <- reactive({
             .clusterTree(
-                do.call(cbind, assignments),
+                assignments,
                 transitionProportions = edgeProportions(),
                 transitionLabels = edgeLabels() == "Show",
                 transitionThreshold = edgeThreshold()
@@ -299,8 +391,8 @@
                 scale_color_manual(values = colors)
         })
 
-        output$tree <- renderggiraph({
-            plot <- ggiraph(
+        output$tree <- ggiraph::renderggiraph({
+            plot <- ggiraph::ggiraph(
                 code = print(treePlot()),
                 hover_css = paste(
                     "stroke:#888;",
@@ -381,12 +473,12 @@
                 assign(envir = parent.frame(), plotName, reactive(
                     .arrayPlot(
                         scores = eval(call(infoName)),
-                        coordinates = coords,
+                        coordinates = coordinates,
                         image =
-                            if (!is.null(img) && !is.null(coords) &&
+                            if (!is.null(image) && !is.null(coordinates) &&
                                     showImage() == "Show")
-                                rasterGrob(
-                                    img,
+                                grid::rasterGrob(
+                                    image,
                                     width = unit(1, "npc"),
                                     height = unit(1, "npc"),
                                     interpolate = TRUE
@@ -398,7 +490,7 @@
                         scale_fill_manual(values = colors) +
                         ggtitle(sprintf("Resolution %s", d_))
                 ))
-                output[[paste0("plot", d_)]] <- renderPlot(
+                output[[paste0("plot", d_)]] <- shiny::renderPlot(
                     {
                         message(sprintf("Loading resolution \"%s\"...", d_))
                         eval(call(plotName))
@@ -408,27 +500,27 @@
             })()
         }
 
-        output$array <- renderUI({
+        output$array <- shiny::renderUI({
             sort(as.numeric(input$tree_selected)) %>%
                 map(~paste0("plot", .)) %>%
-                keep(~. %in% names(outputOptions(output))) %>%
-                map(~div(
+                keep(~. %in% names(shiny::outputOptions(output))) %>%
+                map(~shiny::div(
                     style = "display: inline-block;",
-                    div(
+                    shiny::div(
                         style = paste(
                             "position: relative;",
                             "width: 400px;",
                             "height: 400px;"
                         ),
                         list(
-                            plotOutput(.),
-                            div(
+                            shiny::plotOutput(.),
+                            shiny::div(
                                 style = paste(
                                     "z-index: -1;",
                                     "position: absolute;",
                                     "top: 50%; left: 50%;"
                                 ),
-                                div(
+                                shiny::div(
                                     style = paste(
                                         "background: #eee;",
                                         "padding: 1em;",
@@ -441,15 +533,15 @@
                         )
                     )
                 )) %>%
-                invoke(div, style = "text-align:center", .)
+                invoke(shiny::div, style = "text-align:center", .)
         })
 
         ###
         ## EXPORT
         observeEvent(input$done, {
-            stopApp(returnValue = list(
+            shiny::stopApp(returnValue = list(
                 clusters = assignments[input$tree_selected],
-                tree = treePlot(),
+                treePlot = treePlot(),
                 piePlots = lapply(
                     setNames(nm = input$tree_selected),
                     function(x) eval(call(sprintf("array_%s", x)))
@@ -469,128 +561,143 @@
     }
 }
 
+
 #' SpatialCPie UI
 #'
+#' @param imageButton show image radio buttons
+#' @return SpatialCPie UI, to be passed to `shiny::shinyApp()`
 #' @keywords internal
-.ui <- miniPage(
-    tags$head(tags$style(HTML(
-        ".recalculating { position: relative; z-index: -2 }"))),
-    gadgetTitleBar("SpatialCPie"),
-    miniContentPanel(
-        fillPage(
-            sidebarLayout(
-                sidebarPanel(width = 3,
-                    radioButtons(
-                        "edgeLabels", "Edge labels:", c("Show", "Hide")
-                    ),
-                    radioButtons(
-                        "edgeProportions", "Edge proportions:", c("To", "From")
-                    ),
-                    numericInput(
-                        "edgeThreshold", "Min proportion:",
-                        max = 1, min = 0, value = 0.05, step = 0.01
-                    )
-                ),
-                div(
-                    style = "text-align: center",
-                    mainPanel(ggiraphOutput("tree"))
-                )
-            ),
-            hr(),
-            sidebarLayout(
-                sidebarPanel(width = 3,
-                    if (!is.null(img))
-                        radioButtons(
-                            "showImage", "HE image:", c("Show", "Hide")
+.makeUI <- function(
+    imageButton = FALSE
+) {
+    miniUI::miniPage(
+        shiny::tags$head(shiny::tags$style(shiny::HTML(
+            ".recalculating { position: relative; z-index: -2 }"))),
+        miniUI::gadgetTitleBar("SpatialCPie"),
+        miniUI::miniContentPanel(
+            shiny::fillPage(
+                shiny::sidebarLayout(
+                    shiny::sidebarPanel(width = 3,
+                        shiny::radioButtons(
+                            "edgeLabels",
+                            "Edge labels:", c("Show", "Hide")
+                        ),
+                        shiny::radioButtons(
+                            "edgeProportions",
+                            "Edge proportions:", c("To", "From")
+                        ),
+                        shiny::numericInput(
+                            "edgeThreshold",
+                            "Min proportion:",
+                            max = 1, min = 0, value = 0.05, step = 0.01
                         )
-                    else NULL,
-                    numericInput(
-                        "simC", "Score multiplier:",
-                        max = 10, min = 0.1,
-                        value = 1, step = 0.2
                     ),
-                    numericInput(
-                        "spotOpacity", "Opacity:",
-                        max = 100, min = 1,
-                        value = 100, step = 10
-                    ),
-                    numericInput(
-                        "spotSize", "Size:",
-                        max = 10, min = 1,
-                        value = 5, step = 1
+                    shiny::div(
+                        style = "text-align: center",
+                        shiny::mainPanel(ggiraph::ggiraphOutput("tree"))
                     )
                 ),
-                mainPanel(uiOutput("array"))
+                shiny::hr(),
+                shiny::sidebarLayout(
+                    shiny::sidebarPanel(width = 3,
+                        if (isTRUE(imageButton))
+                            shiny::radioButtons(
+                                "showImage",
+                                "HE image:", c("Show", "Hide")
+                            )
+                        else NULL,
+                        shiny::numericInput(
+                            "simC",
+                            "Score multiplier:",
+                            max = 10, min = 0.1, value = 1, step = 0.2
+                        ),
+                        shiny::numericInput(
+                            "spotOpacity",
+                            "Opacity:",
+                            max = 100, min = 1, value = 100, step = 10
+                        ),
+                        shiny::numericInput(
+                            "spotSize",
+                            "Size:",
+                            max = 10, min = 1, value = 5, step = 1
+                        )
+                    ),
+                    shiny::mainPanel(shiny::uiOutput("array"))
+                )
             )
         )
     )
-)
+}
+
 
 #' Run SpatialCPie
 #'
-#' Runs the SpatialCPie gadget
+#' Runs the SpatialCPie gadget.
 #' @param counts gene count matrix.
 #' @param assignments list of cluster assignments for each resolution.
-#' @param img image to be used as background to the plot (optional).\cr
+#' @param image image to be used as background to the plot.\cr
 #' Note: For the tissue image to be correctly aligned to the spatial areas, the
 #' pixel.coords argument also needs to be provided.
-#' @param pixel.coords `data.frame` with pixel coordinates (optional).
-#' The rows should correspond to the columns (spatial areas) in the count file.
 #' @param view Shiny gadgets viewer options.
 #' Available options: "dialog" (default), "browser", "pane".
-#' @return FIXME
-#' @keywords arrayplot arraypieplot clustertree
+#' @param spotCoordinates `data.frame` with pixel coordinates. The rows should
+#' correspond to the columns (spatial areas) in the count file.
+#' @return a list with the following items:
+#' - `"clusters"`: Cluster assignments (may differ from `assignments`)
+#' - `"treePlot"`: The cluster tree ggplot object
+#' - `"piePots"`: The pie plot ggplot objects
+#' - `"piePlotsInfo"`: Likeness scores between spots and clusters in each
+#' resolution
 #' @export
-#' @import shiny miniUI ggplot2 grid zeallot grid purrr readr
-#' @importFrom colorspace LAB hex
-#' @importFrom dplyr summarize
-#' @importFrom stats prcomp setNames
-#' @importFrom tibble rownames_to_column
-#' @importFrom tidyr gather spread
-#' @importFrom utils head tail
 #' @examples
-#' options(device.ask.default = FALSE)
+#' if (interactive()) {
+#'     options(device.ask.default = FALSE)
 #'
-#' ## Set up coordinate system
-#' coords <- as.matrix(expand.grid(1:10, 1:10))
+#'     ## Set up coordinate system
+#'     coordinates <- as.matrix(expand.grid(1:10, 1:10))
 #'
-#' ## Generate data set with three distinct genes
-#' profiles <- diag(rep(1, 3)) + runif(9)
-#' centers <- cbind(c(5, 2), c(2, 8), c(8, 2))
-#' mixes <- apply(coords, 1, function(x) {
-#'     x <- exp(-colSums((centers-x)^2)/50)
-#'     x / sum(x)
-#' })
-#' means <- 100 * profiles %*% mixes
-#' counts <- matrix(rpois(prod(dim(means)), means), nrow=nrow(profiles))
-#' colnames(counts) <- apply(
-#'     coords, 1, function(x) do.call(paste, c(as.list(x), list(sep="x"))))
-#' rownames(counts) <- paste("gene", 1:nrow(counts))
+#'     ## Generate data set with three distinct genes generated by three
+#'     ## distinct cell types
+#'     profiles <- diag(rep(1, 3)) + runif(9)
+#'     centers <- cbind(c(5, 2), c(2, 8), c(8, 2))
+#'     mixes <- apply(coordinates, 1, function(x) {
+#'         x <- exp(-colSums((centers-x)^2)/50)
+#'         x / sum(x)
+#'     })
+#'     means <- 100 * profiles %*% mixes
+#'     counts <- matrix(rpois(prod(dim(means)), means), nrow=nrow(profiles))
+#'     colnames(counts) <- apply(
+#'         coordinates,
+#'         1,
+#'         function(x) do.call(paste, c(as.list(x), list(sep="x")))
+#'     )
+#'     rownames(counts) <- paste("gene", 1:nrow(counts))
 #'
-#' ## Perform clustering
-#' assignments <- lapply(
-#'     2:5, function(x) kmeans(t(counts), centers=x)$cluster)
+#'     ## Perform clustering
+#'     assignments <- lapply(
+#'         2:5, function(x) kmeans(t(counts), centers=x)$cluster)
 #'
-#' ## Run SpatialCPie
-#' runCPie(counts, assignments)
+#'     ## Run SpatialCPie
+#'     runCPie(counts, assignments)
+#' }
 runCPie <- function(
     counts,
     assignments,
-    img = NULL,
+    image = NULL,
     view = NULL,
-    pixel.coords = NULL
+    spotCoordinates = NULL
 ) {
     ## Compute coordinates and intersect spots across resolutions
     spots <- assignments %>% map(names) %>% reduce(intersect)
 
-    if (!is.null(pixel.coords) != 0) {
-        spots <- intersect(spots, rownames(pixel.coords))
-        coords <- pixel.coords
+    if (!is.null(spotCoordinates) != 0) {
+        spots <- intersect(spots, rownames(spotCoordinates))
+        coordinates <- spotCoordinates
     } else {
         c(xcoord, ycoord) %<-% {
             strsplit(spots, "x") %>% transpose %>% map(as.numeric) }
-        coords <- as.data.frame(cbind(x = xcoord, y = ycoord))
-        rownames(coords) <- spots
+        coordinates <- as.data.frame(cbind(x = xcoord, y = ycoord))
+        rownames(coordinates) <- spots
     }
 
     assignments <- assignments %>% map(~.[spots])
@@ -649,7 +756,7 @@ runCPie <- function(
         inner_join(
             counts %>%
                 as.data.frame(stringsAsFactors = FALSE) %>%
-                rownames_to_column("gene") %>%
+                tibble::rownames_to_column("gene") %>%
                 gather(spot, counts, -gene),
             by = "spot"
         ) %>%
@@ -658,22 +765,22 @@ runCPie <- function(
         spread(cluster, mean) %>%
         select(-gene) %>%
         as.matrix %>% t %>%
-        prcomp(rank = 2, center = TRUE) %>% `$`("x") %>%
+        stats::prcomp(rank = 2, center = TRUE) %>% `$`("x") %>%
         (function(x) cbind(
             50,
             (2 * (x - min(x)) / (max(x) - min(x)) - 1) * 100
         )) %>%
-        LAB %>% hex(fixup = TRUE)
+        (colorspace::LAB) %>%
+        (colorspace::hex)(fixup = TRUE)
 
-    runGadget(
-        viewer = view %||% dialogViewer(),
+    shiny::runGadget(
+        viewer = view %||% shiny::dialogViewer(),
         server = .makeServer(
-            assignments = assignments,
             distances = distances,
             colors = colors,
-            img = img,
-            coords = coords
+            image = image,
+            coordinates = coordinates
         ),
-        app = .ui
+        app = .makeUI(!is.null(image))
     )
 }

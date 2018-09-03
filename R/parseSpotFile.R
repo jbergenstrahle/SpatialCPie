@@ -1,9 +1,10 @@
-#' Parsing of spot detector output
+#' Parse spot detector output
 #'
 #' Parses the output from the ST spot detector tool for use with SpatialCPie.
 #'
 #' @param file spot file
-#' @return FIXME
+#' @return `data.frame` with columns "x" and "y" specifying the pixel
+#' coordinates of each spot
 #' @export
 #' @importFrom utils read.table
 #' @examples
