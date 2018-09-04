@@ -344,12 +344,12 @@ globalVariables(c(
         scale_size(guide = "none", range = c(2, 7)) +
         theme_bw() +
         theme(
-              axis.ticks.x = element_blank(),
-              axis.ticks.y = element_blank(),
-              axis.title.x = element_blank(),
-              axis.title.y = element_blank(),
-              axis.text.x = element_blank(),
-              axis.text.y = element_blank()
+            axis.ticks.x = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.title.x = element_blank(),
+            axis.title.y = element_blank(),
+            axis.text.x = element_blank(),
+            axis.text.y = element_blank()
         )
 }
 
