@@ -555,7 +555,7 @@ globalVariables(c(
         ###
         ## STARTUP
         session$onFlushed(function() {
-            session$sendCustomMessage( "tree_set", tail(names(distances), -1))
+            session$sendCustomMessage("tree_set", tail(names(distances), -1))
         })
     }
 }
