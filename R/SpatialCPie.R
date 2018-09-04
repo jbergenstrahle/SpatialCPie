@@ -285,8 +285,7 @@ globalVariables(c(
         igraph::layout.reingold.tilford(graph) %>% `colnames<-`(c("x", "y")),
         igraph::get.vertex.attribute(graph) %>%
             as.data.frame(stringsAsFactors = FALSE)
-    ) %>%
-        mutate(label = sprintf("%s: %d", name, size))
+    )
 
     edges <- c(
         igraph::get.edgelist(graph) %>% array_branch(2) %>%
@@ -320,7 +319,7 @@ globalVariables(c(
                 data_id = as.factor(resolution),
                 color = as.factor(cluster),
                 size = size,
-                tooltip = label
+                tooltip = sprintf("%s: %d", name, size)
             ),
             data = vertices %>% filter(name != "R1C1")
         ) +
