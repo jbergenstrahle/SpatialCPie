@@ -4,5 +4,5 @@ library(shinytest)
 
 
 test_that("Gadget output hasn't changed", {
-  expect_pass(testApp("./cases/default/", compareImages = FALSE))
+    expect_pass(testApp("./cases/default/", compareImages = FALSE))
 })
