@@ -7,7 +7,7 @@
 \title{SpatialCPie: Cluster analysis of Spatial Transcriptomics data}
 \description{
 A shiny gadget that can be used for cluster analysis of Spatial
-  Transcriptomics data.
+    Transcriptomics data.
 }
 \author{
 \strong{Maintainer}: Joseph Bergenstraahle \email{j.bergenstrahle@scilifelab.se}

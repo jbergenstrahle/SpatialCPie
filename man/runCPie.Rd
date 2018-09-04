@@ -4,23 +4,20 @@
 \alias{runCPie}
 \title{Run SpatialCPie}
 \usage{
-runCPie(counts, assignments, image = NULL, view = NULL,
-  spotCoordinates = NULL)
+runCPie(counts, assignments, image = NULL, spotCoordinates = NULL,
+  view = NULL)
 }
 \arguments{
 \item{counts}{gene count matrix.}
 
 \item{assignments}{list of cluster assignments for each resolution.}
 
-\item{image}{image to be used as background to the plot.\cr
-Note: For the tissue image to be correctly aligned to the spatial areas, the
-pixel.coords argument also needs to be provided.}
-
-\item{view}{Shiny gadgets viewer options.
-Available options: "dialog" (default), "browser", "pane".}
+\item{image}{image to be used as background to the plot.}
 
 \item{spotCoordinates}{\code{data.frame} with pixel coordinates. The rows should
 correspond to the columns (spatial areas) in the count file.}
+
+\item{view}{\code{shiny::viewer} object}
 }
 \value{
 a list with the following items:
@@ -47,21 +44,21 @@ if (interactive()) {
     profiles <- diag(rep(1, 3)) + runif(9)
     centers <- cbind(c(5, 2), c(2, 8), c(8, 2))
     mixes <- apply(coordinates, 1, function(x) {
-        x <- exp(-colSums((centers-x)^2)/50)
+        x <- exp(-colSums((centers - x) ^ 2) / 50)
         x / sum(x)
     })
     means <- 100 * profiles \%*\% mixes
-    counts <- matrix(rpois(prod(dim(means)), means), nrow=nrow(profiles))
+    counts <- matrix(rpois(prod(dim(means)), means), nrow = nrow(profiles))
     colnames(counts) <- apply(
         coordinates,
         1,
-        function(x) do.call(paste, c(as.list(x), list(sep="x")))
+        function(x) do.call(paste, c(as.list(x), list(sep = "x")))
     )
     rownames(counts) <- paste("gene", 1:nrow(counts))
 
     ## Perform clustering
     assignments <- lapply(
-        2:5, function(x) kmeans(t(counts), centers=x)$cluster)
+        2:5, function(x) kmeans(t(counts), centers = x)$cluster)
 
     ## Run SpatialCPie
     runCPie(counts, assignments)
