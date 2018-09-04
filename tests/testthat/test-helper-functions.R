@@ -1,6 +1,5 @@
 context("Helper functions")
 
-
 test_that("SpatialCPie:::.likeness outputs expected values", {
     # Same distance to all clusters
     expect_equal(
@@ -21,7 +20,6 @@ test_that("SpatialCPie:::.likeness outputs expected values", {
     expect_true(all(max_likeness(1.0) < max_likeness(1.0 + 1e-3)))
 })
 
-
 test_that("SpatialCPie:::.pairwiseDistance outputs expected values", {
     p1 <- rbind(c(0, 0), c(1, -2))
     p2 <- rbind(c(1, 0), c(1, 2))
@@ -30,7 +28,6 @@ test_that("SpatialCPie:::.pairwiseDistance outputs expected values", {
         rbind(c(1, 4), c(5, 16))
     )
 })
-
 
 test_that("SpatialCPie:::.maximizeOverlap outputs expected values", {
     expect_equal(

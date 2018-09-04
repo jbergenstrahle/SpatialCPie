@@ -1,6 +1,5 @@
 context("Utility functions")
 
-
 test_that("SpatialCPie::parseSpotFile parses spot files correctly", {
     data <- rbind(
         c(7, 18, 7.00, 18.07, 563.2, 947.0),
