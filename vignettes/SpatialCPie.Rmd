@@ -2,11 +2,17 @@
 title: "Spatial transcriptomics cluster analysis with SpatialCPie"
 author:
 - name: "Joseph Bergenstraahle"
-  affiliation: "Science for Life Laboratory, Department of Gene Technology, School of Biotechnology, Royal Institute of Technology (KTH), SE-106 91 Solna, Sweden"
+  affiliation: "Science for Life Laboratory, Department of Gene Technology,
+  School of Biotechnology, Royal Institute of Technology (KTH), SE-106 91 Solna,
+  Sweden"
 - name: "Ludvig Bergenstraahle"
-  affiliation: "Science for Life Laboratory, Department of Gene Technology, School of Biotechnology, Royal Institute of Technology (KTH), SE-106 91 Solna, Sweden"
+  affiliation: "Science for Life Laboratory, Department of Gene Technology,
+  School of Biotechnology, Royal Institute of Technology (KTH), SE-106 91 Solna,
+  Sweden"
 - name: "Joakim Lundeberg"
-  affiliation: "Science for Life Laboratory, Department of Gene Technology, School of Biotechnology, Royal Institute of Technology (KTH), SE-106 91 Solna, Sweden"
+  affiliation: "Science for Life Laboratory, Department of Gene Technology,
+  School of Biotechnology, Royal Institute of Technology (KTH), SE-106 91 Solna,
+  Sweden"
 package: "SpatialCPie"
 output:
   BiocStyle::html_document
