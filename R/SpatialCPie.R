@@ -188,8 +188,8 @@ globalVariables(c(
 
     c(ymin, ymax) %<-% range(coordinates$y)
     c(xmin, xmax) %<-% range(coordinates$x)
-    c(ymin, xmin) %<-% { c(ymin, xmin) %>% map(~. - 2 * r) }
-    c(ymax, xmax) %<-% { c(ymax, xmax) %>% map(~. + 2 * r) }
+    c(ymin, xmin) %<-% { c(ymin, xmin) %>% map(~. - 3 * r) }
+    c(ymax, xmax) %<-% { c(ymax, xmax) %>% map(~. + 3 * r) }
 
     if (!is.null(image)) {
         ymin <- max(ymin, 0)
@@ -387,6 +387,12 @@ globalVariables(c(
         spotOpacity     <- reactive({ input$spotOpacity     }) %>% debounce(500)
         spotSize        <- reactive({ input$spotSize        }) %>% debounce(500)
 
+        setSelection <- function(value) {
+            assign("selection", value, pos = parent.frame())
+        }
+        reactiveSelection <- reactive({ setSelection(input$tree_selected) })
+        setSelection(tail(names(distances), -1))
+
         ###
         ## CLUSTER TREE
         treePlot <- reactive({
@@ -422,7 +428,7 @@ globalVariables(c(
             ## latter is loaded last, the selection would be overwritten.
             ## Thus, we instead modify the dependency file directly to
             ## include the plot's initial selection.
-            if (length(input$tree_selected) > 0) {
+            if (length(selection) > 0) {
                 dependency <- paste(
                     plot$dependencies[[1]]$src$file,
                     plot$dependencies[[1]]$script,
@@ -445,7 +451,7 @@ globalVariables(c(
                 ## Set initial selection
                 selection_array <- sprintf(
                     "[%s]",
-                    paste0("'", input$tree_selected, "'") %>%
+                    paste0("'", selection, "'") %>%
                         invoke(paste, sep = ",", .)
                 )
                 src <- paste0(
@@ -503,7 +509,7 @@ globalVariables(c(
                         message(sprintf("Loading resolution \"%s\"...", d_))
                         eval(call(plotName))
                     },
-                    width = 400, height = 400
+                    width = 500, height = 500
                 )
             })()
         }
@@ -517,8 +523,8 @@ globalVariables(c(
                     shiny::div(
                         style = paste(
                             "position: relative;",
-                            "width: 400px;",
-                            "height: 400px;"
+                            "width: 500px;",
+                            "height: 500px;"
                         ),
                         list(
                             shiny::plotOutput(.),
@@ -546,26 +552,21 @@ globalVariables(c(
 
         ###
         ## EXPORT
-        observeEvent(input$done, {
-            shiny::stopApp(returnValue = list(
-                clusters = assignments[input$tree_selected],
+        outputs <- reactive({
+            list(
+                clusters = assignments[selection],
                 treePlot = treePlot(),
                 piePlots = lapply(
-                    setNames(nm = input$tree_selected),
+                    setNames(nm = selection),
                     function(x) eval(call(sprintf("array_%s", x)))
                 ),
                 piePlotsInfo = lapply(
-                    setNames(nm = input$tree_selected),
+                    setNames(nm = selection),
                     function(x) eval(call(sprintf("array_info_%s", x)))
                 )
-            ))
+            )
         })
-
-        ###
-        ## STARTUP
-        session$onFlushed(function() {
-            session$sendCustomMessage("tree_set", tail(names(distances), -1))
-        })
+        observeEvent(input$done, shiny::stopApp(returnValue = outputs()))
     }
 }
 
@@ -662,6 +663,7 @@ globalVariables(c(
     }
 
     assignments <- assignments %>% map(~.[spots])
+    counts <- counts[, spots]
 
     ## Relabel the data, making sure that all labels in resolution r are in
     ## [1..r]
