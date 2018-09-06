@@ -43,9 +43,51 @@ cluster identification, selection and further downstream applications
 Usage example
 =============
 
+```{r, include = FALSE}
+# Patch SpatialCPie::runCPie so that a "phantom user" is started when the app is
+# launched.
+# The phantom user will visit the gadget just to click on the "Done" button.
+phantomUser <- function(url) {
+    system(
+        sprintf(
+            "R --slave --vanilla <<< '
+                pjs = webdriver::run_phantomjs()
+                ses = webdriver::Session$new(port = pjs$port)
+                ses$go(\"%s\")
+                ses$executeScript(\"
+                    function f() {
+                        if ($(\\\"html\\\").hasClass(\\\"shiny-busy\\\")) {
+                            setTimeout(f, 100);
+                        } else {
+                            $(\\\"#done\\\").click();
+                        }
+                    }
+                    f();
+                \")
+                ses$waitFor(\"$(\\\"#shiny-disconnected-overlay\\\").length > 0\")
+                '",
+            url
+        ),
+        wait = FALSE
+    )
+}
+assignInNamespace(
+    ns = "SpatialCPie",
+    x = "runCPie",
+    value = function(...) {
+        args <- if (!is.null(names(list(...))))
+                    list(...)[which(names(list(...)) %in%
+                        c("", formalArgs(SpatialCPie:::.makeApp)))]
+                else list(...)
+        app <- do.call(SpatialCPie:::.makeApp, args)
+        suppressMessages(shiny::runApp(app, launch.browser = phantomUser))
+    }
+)
+```
+
 ```{r}
 library(SpatialCPie)
-set.seed(123)
+set.seed(42)
 ```
 
 Input data
@@ -124,7 +166,7 @@ Any clustering algorithm can be used to compute the cluster assignments.
 For example, using `kmeans` to compute resolutions 2--5, we can write:
 
 ```{r}
-assignments <- lapply(2:5, function(x) kmeans(t(counts), centers = x)$cluster)
+assignments <- lapply(2:4, function(x) kmeans(t(counts), centers = x)$cluster)
 str(assignments)
 ```
 
@@ -133,12 +175,60 @@ Visualization
 
 We are now ready to use the gadget to visualize the data:
 
-```{r, eval = FALSE}
+```{r}
 result <- runCPie(
     counts,
     assignments,
     image = tissue,
     spotCoordinates = spots
 )
-result
 ```
+
+The gadget has two main elements: the **cluster tree** and the **spatial array
+plots**.
+The cluster tree is interactive and by selecting rows of nodes, the
+corresponding spatial array plots are also displayed.
+The information contained in these plots will be discussed in the following
+sections.
+
+To exit the gadget, press the "Done" button.
+The plots in the gadget, the cluster assignments, and the likeness scores are
+stored in the output object, which has the following structure:
+
+```{r}
+str(result, max.level = 1)
+```
+
+### Cluster tree
+
+```{r}
+result$treePlot
+```
+
+The cluster tree is a visual representation of how the spatial features
+transition from clusters of lower resolution to clusters of higher resolution.
+The edge opacities show the proportion of spots that transition to or from a
+given cluster while node radii display the size of each cluster.
+
+### Spatial array plots
+
+```{r}
+result$piePlots$`4`
+```
+
+The spatial array plots show the spatial locations of the clusters.
+The pie diagrams are based on a **likeness score** between each spots and each
+cluster.
+The likeness score, $L$, between spot $s$ and cluster $k$ is defined as:
+
+$$
+L(s, k) = \mbox{exp}\left(
+    -\lambda ||x_s - \mbox{mean}({\{x_{s'}\}_{s' \in k}})||_2
+\right),
+$$
+
+where $x_i$ is the gene expression vector of spot $i$ and $\lambda$ is a
+user-defined constant (adjustable from the gadget).
+
+Note that the definition implies that it is possible to hard-label the spots by
+cranking up $\lambda$ to a high value.
