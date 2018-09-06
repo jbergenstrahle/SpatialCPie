@@ -554,7 +554,7 @@ globalVariables(c(
         ## EXPORT
         outputs <- reactive({
             list(
-                clusters = assignments[selection],
+                clusters = assignments[, selection],
                 treePlot = treePlot(),
                 piePlots = lapply(
                     setNames(nm = selection),
