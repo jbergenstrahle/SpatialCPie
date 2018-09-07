@@ -210,6 +210,11 @@ transition from clusters of lower resolution to clusters of higher resolution.
 The edge opacities show the proportion of spots that transition to or from a
 given cluster while node radii display the size of each cluster.
 
+When launching the gadget, spots are relabeled so as to minimize the number of
+crossovers (label switches) between resolutions in the data.
+Moreover, cluster color labels are selected so that dissimilar clusters are
+farther away in color space.
+
 ### Spatial array plots
 
 ```{r}
@@ -217,18 +222,64 @@ result$piePlots$`4`
 ```
 
 The spatial array plots show the spatial locations of the clusters.
-The pie diagrams are based on a **likeness score** between each spots and each
+The pie diagrams are based on a **likeness score** between each spot and each
 cluster.
 The likeness score, $L$, between spot $s$ and cluster $k$ is defined as:
 
 $$
 L(s, k) = \mbox{exp}\left(
-    -\lambda ||x_s - \mbox{mean}({\{x_{s'}\}_{s' \in k}})||_2
+    -\lambda ||x_s - \mbox{mean}({\{x_{s'}\}_{s' \in C(k)}})||_2
 \right),
 $$
 
-where $x_i$ is the gene expression vector of spot $i$ and $\lambda$ is a
-user-defined constant (adjustable from the gadget).
+where $x_i$ is the gene expression vector of spot $i$, $C(k)$ is the set of
+spots in cluster $k$, and $\lambda$ is a user-defined constant (adjustable from
+the gadget).
 
-Note that the definition implies that it is possible to hard-label the spots by
-cranking up $\lambda$ to a high value.
+Note that the definition implies that it is possible to (practically) hard-label
+the spots by setting $\lambda$ to a high value.
+
+Sub-clustering
+--------------
+
+After a "global" analysis of the entire tissue section, it is often interesting
+to sub-cluster parts of the tissue.
+This can be achieved via cluster selection in the gadget and subsequent
+sub-sampling of the clusters that the user wants to re-cluster further.
+
+As a practical example, from the array plot above, we can see that clusters 1
+and 4 in resolution 4 appear in mostly the same spatial areas and, from the
+cluster tree, we can also see that they are mostly derived from the same
+lower-resolution cluster.
+Therefore, it could be interesting to sub-cluster the spots assigned to these
+clusters:
+
+```{r}
+subcluster <- names(result$clusters[, "4"][
+    which(result$clusters[, "4"] %in% c(1, 4))]
+)
+head(subcluster)
+```
+
+```{r}
+subclusterResult <- runCPie(
+    counts = counts[, subcluster],
+    assignments = lapply(
+        2:4,
+        function(x) kmeans(t(counts[, subcluster]), centers = x)$cluster
+    ),
+    image = tissue,
+    spotCoordinates = spots
+)
+subclusterResult$treePlot
+```
+
+From the array plots, the sub-clustering appears to pick up two different
+clusters of stromal cells.
+However, the pie charts show that most spots have quite comparable likeness to
+each of the two clusters, which could indicate that this level of clustering is
+too fine-grained.
+
+```{r}
+subclusterResult$piePlots$`2`
+```
