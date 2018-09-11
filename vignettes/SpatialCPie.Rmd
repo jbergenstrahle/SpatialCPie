@@ -49,26 +49,29 @@ Usage example
 # The phantom user will visit the gadget just to click on the "Done" button.
 phantomUser <- function(url) {
     system(
-        sprintf(
-            "R --slave --vanilla <<< '
-                pjs = webdriver::run_phantomjs()
-                ses = webdriver::Session$new(port = pjs$port)
-                ses$go(\"%s\")
-                ses$executeScript(\"
-                    function f() {
-                        if ($(\\\"html\\\").hasClass(\\\"shiny-busy\\\")) {
-                            setTimeout(f, 100);
-                        } else {
-                            $(\\\"#done\\\").click();
-                        }
+        command = "R --slave --vanilla",
+        wait = FALSE,
+        input = c(
+            'write("starting", stderr())',
+            'pjs = webdriver::run_phantomjs()',
+            'ses = webdriver::Session$new(port = pjs$port)',
+            'write("visiting", stderr())',
+            paste0('ses$go("', url, '")'),
+            'write("visited", stderr())',
+            'ses$executeScript("
+                function f() {
+                    if ($(\\\"html\\\").hasClass(\\\"shiny-busy\\\")) {
+                        setTimeout(f, 100);
+                    } else {
+                        $(\\\"#done\\\").click();
                     }
-                    f();
-                \")
-                ses$waitFor(\"$(\\\"#shiny-disconnected-overlay\\\").length > 0\")
-                '",
-            url
-        ),
-        wait = FALSE
+                }
+                f();
+            ")',
+            'write("w8 4 disconnect", stderr())',
+            'ses$waitFor("$(\\\"#shiny-disconnected-overlay\\\").length > 0")',
+            'write("exiting", stderr())'
+        )
     )
 }
 assignInNamespace(
