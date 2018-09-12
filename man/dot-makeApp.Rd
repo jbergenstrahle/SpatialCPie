@@ -4,7 +4,7 @@
 \alias{.makeApp}
 \title{SpatialCPie App}
 \usage{
-See `runCPie()`
+.makeApp(counts, assignments, image = NULL, spotCoordinates = NULL)
 }
 \value{
 SpatialCPie \code{shiny::shinyApp()} object

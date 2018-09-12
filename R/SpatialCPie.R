@@ -642,7 +642,6 @@ globalVariables(c(
 
 #' SpatialCPie App
 #'
-#' @usage See `runCPie()`
 #' @return SpatialCPie `shiny::shinyApp()` object
 .makeApp <- function(
     counts,
