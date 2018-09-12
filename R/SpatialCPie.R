@@ -809,6 +809,6 @@ runCPie <- function(
             image,
             spotCoordinates
         ),
-        viewer = view %||% shiny::dialogViewer()
+        viewer = view %||% shiny::dialogViewer("SpatialCPie")
     )
 }
