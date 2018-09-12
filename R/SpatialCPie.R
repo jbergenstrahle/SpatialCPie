@@ -642,7 +642,12 @@ globalVariables(c(
 
 #' SpatialCPie App
 #'
+#' @param counts gene count matrix.
+#' @param assignments cluster assignments.
+#' @param image background image.
+#' @param spotCoordinates spot pixel coordinates.
 #' @return SpatialCPie `shiny::shinyApp()` object
+#' @keywords internal
 .makeApp <- function(
     counts,
     assignments,
