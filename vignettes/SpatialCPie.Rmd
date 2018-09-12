@@ -49,26 +49,24 @@ Usage example
 # The phantom user will visit the gadget just to click on the "Done" button.
 phantomUser <- function(url) {
     system(
-        sprintf(
-            "R --slave --vanilla <<< '
-                pjs = webdriver::run_phantomjs()
-                ses = webdriver::Session$new(port = pjs$port)
-                ses$go(\"%s\")
-                ses$executeScript(\"
-                    function f() {
-                        if ($(\\\"html\\\").hasClass(\\\"shiny-busy\\\")) {
-                            setTimeout(f, 100);
-                        } else {
-                            $(\\\"#done\\\").click();
-                        }
+        command = "R --slave --vanilla",
+        wait = FALSE,
+        input = c(
+            'pjs = webdriver::run_phantomjs()',
+            'ses = webdriver::Session$new(port = pjs$port)',
+            paste0('ses$go("', url, '")'),
+            'ses$executeScript("
+                function f() {
+                    if ($(\\\"html\\\").hasClass(\\\"shiny-busy\\\")) {
+                        setTimeout(f, 100);
+                    } else {
+                        $(\\\"#done\\\").click();
                     }
-                    f();
-                \")
-                ses$waitFor(\"$(\\\"#shiny-disconnected-overlay\\\").length > 0\")
-                '",
-            url
-        ),
-        wait = FALSE
+                }
+                f();
+            ")',
+            'ses$waitFor("$(\\\"#shiny-disconnected-overlay\\\").length > 0")'
+        )
     )
 }
 assignInNamespace(
