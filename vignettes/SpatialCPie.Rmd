@@ -52,12 +52,9 @@ phantomUser <- function(url) {
         command = "R --slave --vanilla",
         wait = FALSE,
         input = c(
-            'write("starting", stderr())',
             'pjs = webdriver::run_phantomjs()',
             'ses = webdriver::Session$new(port = pjs$port)',
-            'write("visiting", stderr())',
             paste0('ses$go("', url, '")'),
-            'write("visited", stderr())',
             'ses$executeScript("
                 function f() {
                     if ($(\\\"html\\\").hasClass(\\\"shiny-busy\\\")) {
@@ -68,9 +65,7 @@ phantomUser <- function(url) {
                 }
                 f();
             ")',
-            'write("w8 4 disconnect", stderr())',
-            'ses$waitFor("$(\\\"#shiny-disconnected-overlay\\\").length > 0")',
-            'write("exiting", stderr())'
+            'ses$waitFor("$(\\\"#shiny-disconnected-overlay\\\").length > 0")'
         )
     )
 }
@@ -104,7 +99,7 @@ We begin by loading the count data[^data_pipeline]:
 counts <- read.table(
     system.file("extdata", "counts.tsv", package = "SpatialCPie"),
     sep = "\t",
-    check.names = F
+    check.names = FALSE
 )
 counts[1:5, 1:5]
 ```

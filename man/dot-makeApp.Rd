@@ -4,7 +4,16 @@
 \alias{.makeApp}
 \title{SpatialCPie App}
 \usage{
-See `runCPie()`
+.makeApp(counts, assignments, image = NULL, spotCoordinates = NULL)
+}
+\arguments{
+\item{counts}{gene count matrix.}
+
+\item{assignments}{cluster assignments.}
+
+\item{image}{background image.}
+
+\item{spotCoordinates}{spot pixel coordinates.}
 }
 \value{
 SpatialCPie \code{shiny::shinyApp()} object
@@ -12,3 +21,4 @@ SpatialCPie \code{shiny::shinyApp()} object
 \description{
 SpatialCPie App
 }
+\keyword{internal}

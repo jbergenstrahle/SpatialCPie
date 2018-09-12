@@ -387,6 +387,7 @@ globalVariables(c(
         spotOpacity     <- reactive({ input$spotOpacity     }) %>% debounce(500)
         spotSize        <- reactive({ input$spotSize        }) %>% debounce(500)
 
+        selection <- NULL
         setSelection <- function(value) {
             assign("selection", value, pos = parent.frame())
         }
@@ -641,8 +642,12 @@ globalVariables(c(
 
 #' SpatialCPie App
 #'
-#' @usage See `runCPie()`
+#' @param counts gene count matrix.
+#' @param assignments cluster assignments.
+#' @param image background image.
+#' @param spotCoordinates spot pixel coordinates.
 #' @return SpatialCPie `shiny::shinyApp()` object
+#' @keywords internal
 .makeApp <- function(
     counts,
     assignments,
