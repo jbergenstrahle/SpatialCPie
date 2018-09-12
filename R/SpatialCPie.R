@@ -387,6 +387,7 @@ globalVariables(c(
         spotOpacity     <- reactive({ input$spotOpacity     }) %>% debounce(500)
         spotSize        <- reactive({ input$spotSize        }) %>% debounce(500)
 
+        selection <- NULL
         setSelection <- function(value) {
             assign("selection", value, pos = parent.frame())
         }
