@@ -99,7 +99,7 @@ We begin by loading the count data[^data_pipeline]:
 counts <- read.table(
     system.file("extdata", "counts.tsv", package = "SpatialCPie"),
     sep = "\t",
-    check.names = F
+    check.names = FALSE
 )
 counts[1:5, 1:5]
 ```
