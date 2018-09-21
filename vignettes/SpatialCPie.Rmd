@@ -47,6 +47,9 @@ Usage example
 # Patch SpatialCPie::runCPie so that a "phantom user" is started when the app is
 # launched.
 # The phantom user will visit the gadget just to click on the "Done" button.
+if (is.null(suppressMessages(webdriver:::find_phantom()))) {
+  webdriver::install_phantomjs()
+}
 phantomUser <- function(url) {
     system(
         command = "R --slave --vanilla",
