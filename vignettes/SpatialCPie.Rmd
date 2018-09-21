@@ -27,8 +27,8 @@ output: BiocStyle::html_document
 
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(
-  collapse = TRUE,
-  comment = "# >"
+    collapse = TRUE,
+    comment = "# >"
 )
 ```
 
@@ -49,7 +49,7 @@ Usage example
 # The phantom user will visit the gadget just to click on the "Done" button.
 loadNamespace("webdriver")
 if (is.null(suppressMessages(webdriver:::find_phantom()))) {
-  webdriver::install_phantomjs()
+    webdriver::install_phantomjs()
 }
 phantomUser <- function(url) {
     system(
@@ -148,11 +148,11 @@ Let's also remove all spots and genes that have less than 20 reads in total:
 ```{r}
 d <- dim(counts)
 repeat {
-  counts <- counts[rowSums(counts) >= 20, colSums(counts) >= 20]
-  if (all(dim(counts) == d)) {
-    break
-  }
-  d <- dim(counts)
+    counts <- counts[rowSums(counts) >= 20, colSums(counts) >= 20]
+    if (all(dim(counts) == d)) {
+      break
+    }
+    d <- dim(counts)
 }
 ```
 
