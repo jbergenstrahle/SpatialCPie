@@ -14,6 +14,7 @@
 #' @importFrom readr read_file write_file
 #' @importFrom shiny debounce observeEvent reactive
 #' @importFrom stats dist setNames
+#' @importFrom SummarizedExperiment assay
 #' @importFrom tibble rownames_to_column
 #' @importFrom tidyr gather spread
 #' @importFrom tidyselect everything quo
@@ -756,7 +757,7 @@ globalVariables(c(
 #' Run SpatialCPie
 #'
 #' Runs the SpatialCPie gadget.
-#' @param counts gene count matrix.
+#' @param counts gene count matrix or a `SummarizedExperiment::SummarizedExperiment-class` object containing count values.
 #' @param assignments list of cluster assignments for each resolution.
 #' @param image image to be used as background to the plot.
 #' @param spotCoordinates `data.frame` with pixel coordinates. The rows should
@@ -807,6 +808,9 @@ runCPie <- function(
     spotCoordinates = NULL,
     view = NULL
 ) {
+    if (class(counts) == "RangedSummarizedExperiment") {
+        counts <- SummarizedExperiment::assay(counts)
+    }
     shiny::runGadget(
         app = .makeApp(
             counts,
