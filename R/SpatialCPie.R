@@ -170,12 +170,13 @@ globalVariables(c(
 #' Array pie plot
 #'
 #' @param scores (n, K) scoring matrix
-#' @param coordinates `data.frame` with `rownames` matching those in `scores`
-#' and columns `x` and `y` specifying the plotting position of each observation
-#' @param image a `grob` to use as background to the plots
+#' @param coordinates \code{\link[base]{data.frame}} with
+#' \code{\link[base]{rownames}} matching those in `scores` and columns `x` and
+#' `y` specifying the plotting position of each observation
+#' @param image a \code{\link[grid]{grob}} to use as background to the plots
 #' @param spotScale pie chart size
 #' @param spotOpacity pie chart opacity
-#' @return `ggplot` object of the pie plot
+#' @return \code{\link[ggplot2]{ggplot}} object of the pie plot
 #' @keywords internal
 .arrayPlot <- function(
     scores,
@@ -230,7 +231,8 @@ globalVariables(c(
 
 #' Cluster tree
 #'
-#' @param (n, R) assignment matrix, where R is the number of resolutions
+#' @param assignments (n, R) assignment matrix, where R is the number of
+#' resolutions
 #' @param transitionProportions how to compute the transition proportions.
 #' Possible values are:
 #' - `"From"`: based on the total number of assignments in the lower-resolution
@@ -240,7 +242,7 @@ globalVariables(c(
 #' @param transitionLabels show edge labels
 #' @param transitionThreshold hide edges with transition proportions below this
 #' threshold
-#' @return `ggplot` object of the cluster tree
+#' @return \code{\link[ggplot2]{ggplot}} object of the cluster tree
 #' @keywords internal
 .clusterTree <- function(
     assignments,
@@ -362,11 +364,12 @@ globalVariables(c(
 #' resolution
 #' @param colors vector of colors for each cluster label
 #' @param image background image for the array plots, passed to
-#' `grid::rasterGrob()`
-#' @param coordinates `data.frame` with `rownames` matching the `names` in
+#' \code{\link[grid]{rasterGrob}}
+#' @param coordinates \code{\link[base]{data.frame}} with
+#' \code{\link[base]{rownames}} matching the \code{\link[base]{names}} in
 #' `scores` and columns `x` and `y` specifying the plotting position of each
 #' observation
-#' @return server function, to be passed to `shiny::shinyApp()`
+#' @return server function, to be passed to \code{\link[shiny]{shinyApp}}
 #' @keywords internal
 .makeServer <- function(
     distances,
@@ -577,7 +580,7 @@ globalVariables(c(
 #' SpatialCPie UI
 #'
 #' @param imageButton show image radio buttons
-#' @return SpatialCPie UI, to be passed to `shiny::shinyApp()`
+#' @return SpatialCPie UI, to be passed to \code{\link[shiny]{shinyApp}}
 #' @keywords internal
 .makeUI <- function(
     imageButton = FALSE
@@ -648,7 +651,7 @@ globalVariables(c(
 #' @param assignments cluster assignments.
 #' @param image background image.
 #' @param spotCoordinates spot pixel coordinates.
-#' @return SpatialCPie `shiny::shinyApp()` object
+#' @return SpatialCPie \code{\link[shiny]{shinyApp}} object
 #' @keywords internal
 .makeApp <- function(
     counts,
@@ -759,13 +762,13 @@ globalVariables(c(
 #'
 #' Runs the SpatialCPie gadget.
 #' @param counts gene count matrix or a
-#' `SummarizedExperiment::SummarizedExperiment-class` object containing count
-#' values.
+#' \code{\link[SummarizedExperiment]{SummarizedExperiment}} object containing
+#' count values.
 #' @param assignments list of cluster assignments for each resolution.
 #' @param image image to be used as background to the plot.
-#' @param spotCoordinates `data.frame` with pixel coordinates. The rows should
-#' correspond to the columns (spatial areas) in the count file.
-#' @param view `shiny::viewer` object
+#' @param spotCoordinates \code{\link[base]{data.frame}} with pixel coordinates.
+#' The rows should correspond to the columns (spatial areas) in the count file.
+#' @param view \code{\link[shiny]{viewer}} object
 #' @return a list with the following items:
 #' - `"clusters"`: Cluster assignments (may differ from `assignments`)
 #' - `"treePlot"`: The cluster tree ggplot object

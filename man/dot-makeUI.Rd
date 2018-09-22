@@ -10,7 +10,7 @@
 \item{imageButton}{show image radio buttons}
 }
 \value{
-SpatialCPie UI, to be passed to \code{shiny::shinyApp()}
+SpatialCPie UI, to be passed to \code{\link[shiny]{shinyApp}}
 }
 \description{
 SpatialCPie UI

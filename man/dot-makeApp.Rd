@@ -16,7 +16,7 @@
 \item{spotCoordinates}{spot pixel coordinates.}
 }
 \value{
-SpatialCPie \code{shiny::shinyApp()} object
+SpatialCPie \code{\link[shiny]{shinyApp}} object
 }
 \description{
 SpatialCPie App

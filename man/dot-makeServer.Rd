@@ -13,14 +13,15 @@ resolution}
 \item{colors}{vector of colors for each cluster label}
 
 \item{image}{background image for the array plots, passed to
-\code{grid::rasterGrob()}}
+\code{\link[grid]{rasterGrob}}}
 
-\item{coordinates}{\code{data.frame} with \code{rownames} matching the \code{names} in
+\item{coordinates}{\code{\link[base]{data.frame}} with
+\code{\link[base]{rownames}} matching the \code{\link[base]{names}} in
 \code{scores} and columns \code{x} and \code{y} specifying the plotting position of each
 observation}
 }
 \value{
-server function, to be passed to \code{shiny::shinyApp()}
+server function, to be passed to \code{\link[shiny]{shinyApp}}
 }
 \description{
 SpatialCPie server

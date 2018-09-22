@@ -8,16 +8,18 @@ runCPie(counts, assignments, image = NULL, spotCoordinates = NULL,
   view = NULL)
 }
 \arguments{
-\item{counts}{gene count matrix.}
+\item{counts}{gene count matrix or a
+\code{\link[SummarizedExperiment]{SummarizedExperiment}} object containing
+count values.}
 
 \item{assignments}{list of cluster assignments for each resolution.}
 
 \item{image}{image to be used as background to the plot.}
 
-\item{spotCoordinates}{\code{data.frame} with pixel coordinates. The rows should
-correspond to the columns (spatial areas) in the count file.}
+\item{spotCoordinates}{\code{\link[base]{data.frame}} with pixel coordinates.
+The rows should correspond to the columns (spatial areas) in the count file.}
 
-\item{view}{\code{shiny::viewer} object}
+\item{view}{\code{\link[shiny]{viewer}} object}
 }
 \value{
 a list with the following items:

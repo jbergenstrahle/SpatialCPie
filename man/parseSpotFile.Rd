@@ -10,8 +10,8 @@ parseSpotFile(file)
 \item{file}{spot file}
 }
 \value{
-\code{data.frame} with columns "x" and "y" specifying the pixel
-coordinates of each spot
+\code{\link[base]{data.frame}} with columns "x" and "y" specifying
+the pixel coordinates of each spot
 }
 \description{
 Parses the output from the ST spot detector tool for use with SpatialCPie.

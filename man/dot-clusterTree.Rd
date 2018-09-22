@@ -8,6 +8,9 @@
   transitionLabels = FALSE, transitionThreshold = 0)
 }
 \arguments{
+\item{assignments}{(n, R) assignment matrix, where R is the number of
+resolutions}
+
 \item{transitionProportions}{how to compute the transition proportions.
 Possible values are:
 \itemize{
@@ -21,11 +24,9 @@ cluster
 
 \item{transitionThreshold}{hide edges with transition proportions below this
 threshold}
-
-\item{(n, }{R) assignment matrix, where R is the number of resolutions}
 }
 \value{
-\code{ggplot} object of the cluster tree
+\code{\link[ggplot2]{ggplot}} object of the cluster tree
 }
 \description{
 Cluster tree
