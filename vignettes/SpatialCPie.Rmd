@@ -146,13 +146,12 @@ counts <- counts[, which(colnames(counts) %in% rownames(spots))]
 Let's also remove all spots and genes that have less than 20 reads in total:
 
 ```{r}
-d <- dim(counts)
 repeat {
+    d <- dim(counts)
     counts <- counts[rowSums(counts) >= 20, colSums(counts) >= 20]
     if (all(dim(counts) == d)) {
       break
     }
-    d <- dim(counts)
 }
 ```
 
