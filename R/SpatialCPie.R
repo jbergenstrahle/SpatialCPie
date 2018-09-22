@@ -757,7 +757,9 @@ globalVariables(c(
 #' Run SpatialCPie
 #'
 #' Runs the SpatialCPie gadget.
-#' @param counts gene count matrix or a `SummarizedExperiment::SummarizedExperiment-class` object containing count values.
+#' @param counts gene count matrix or a
+#' `SummarizedExperiment::SummarizedExperiment-class` object containing count
+#' values.
 #' @param assignments list of cluster assignments for each resolution.
 #' @param image image to be used as background to the plot.
 #' @param spotCoordinates `data.frame` with pixel coordinates. The rows should
