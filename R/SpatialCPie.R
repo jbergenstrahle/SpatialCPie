@@ -8,6 +8,7 @@
 #' scale_color_manual scale_fill_manual scale_size
 #' scale_x_continuous scale_y_continuous
 #' @importFrom grid unit
+#' @importFrom methods is
 #' @importFrom purrr
 #' %>% %||% array_branch lift invoke keep map map_dbl map_int partial reduce
 #' transpose
@@ -810,7 +811,7 @@ runCPie <- function(
     spotCoordinates = NULL,
     view = NULL
 ) {
-    if (class(counts) == "RangedSummarizedExperiment") {
+    if (is(counts, "SummarizedExperiment")) {
         counts <- SummarizedExperiment::assay(counts)
     }
     shiny::runGadget(
