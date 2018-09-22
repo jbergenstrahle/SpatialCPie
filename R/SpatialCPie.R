@@ -815,7 +815,7 @@ runCPie <- function(
     view = NULL
 ) {
     if (is(counts, "SummarizedExperiment")) {
-        counts <- SummarizedExperiment::assay(counts)
+        counts <- as.data.frame(SummarizedExperiment::assay(counts))
     }
     shiny::runGadget(
         app = .makeApp(
