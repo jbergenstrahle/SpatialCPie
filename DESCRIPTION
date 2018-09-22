@@ -33,14 +33,14 @@ Imports:
     scatterpie (>= 0.1.2),
     shiny (>= 1.1.0),
     stats (>= 3.5.0),
-    SummarizedExperiment (>= 1.11.6),
+    SummarizedExperiment (>= 1.10.1),
     tibble (>= 1.4.2),
     tidyr (>= 0.8.1),
     tidyselect (>= 0.2.4),
     utils (>= 3.5.0),
     zeallot (>= 0.1.0)
 Suggests:
-    BiocStyle (>= 2.9.6),
+    BiocStyle (>= 2.8.2),
     jpeg (>= 0.1-8),
     knitr (>= 1.20),
     rmarkdown (>= 1.10),
