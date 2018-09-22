@@ -4,7 +4,7 @@ Version: 1.0.0
 Authors@R:
     person(
         "Joseph", "Bergenstraahle",
-        email = "j.bergenstrahle@scilifelab.se",
+        email = "joseph.bergenstrahle@gmail.com",
         role = c("aut", "cre")
     )
 Description:
