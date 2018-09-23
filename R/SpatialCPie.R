@@ -173,7 +173,8 @@ globalVariables(c(
 #' @param coordinates \code{\link[base]{data.frame}} with
 #' `rownames` matching those in `scores` and columns `x` and
 #' `y` specifying the plotting position of each observation
-#' @param image a \code{\link[grid]{grid.grob}} to use as background to the plots
+#' @param image a \code{\link[grid]{grid.grob}} to use as background to the
+#' plots
 #' @param spotScale pie chart size
 #' @param spotOpacity pie chart opacity
 #' @return \code{\link[ggplot2]{ggplot}} object of the pie plot
