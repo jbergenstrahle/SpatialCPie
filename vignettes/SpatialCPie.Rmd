@@ -55,7 +55,7 @@ phantomUser <- function(url) {
         stderr = FALSE,
         wait = FALSE,
         input = c(
-            'Sys.sleep(5)', #To ensure that webserver has started
+            'Sys.sleep(20)', #To ensure that webserver has started
             'library(webdriver)',
             'if (is.null(webdriver:::find_phantom())) {
                  install_phantomjs()
