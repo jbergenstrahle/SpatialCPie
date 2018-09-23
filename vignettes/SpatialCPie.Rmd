@@ -150,7 +150,7 @@ repeat {
     d <- dim(counts)
     counts <- counts[rowSums(counts) >= 20, colSums(counts) >= 20]
     if (all(dim(counts) == d)) {
-      break
+        break
     }
 }
 ```
