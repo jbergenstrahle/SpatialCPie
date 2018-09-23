@@ -10,6 +10,6 @@ A shiny gadget that can be used for cluster analysis of Spatial
     Transcriptomics data.
 }
 \author{
-\strong{Maintainer}: Joseph Bergenstraahle \email{j.bergenstrahle@scilifelab.se}
+\strong{Maintainer}: Joseph Bergenstraahle \email{joseph.bergenstrahle@gmail.com}
 
 }

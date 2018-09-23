@@ -9,8 +9,8 @@ runCPie(counts, assignments, image = NULL, spotCoordinates = NULL,
 }
 \arguments{
 \item{counts}{gene count matrix or a
-\code{\link[SummarizedExperiment]{SummarizedExperiment}} object containing
-count values.}
+\code{\link[SummarizedExperiment]{SummarizedExperiment-class}} object
+containing count values.}
 
 \item{assignments}{list of cluster assignments for each resolution.}
 
