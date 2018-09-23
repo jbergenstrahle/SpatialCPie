@@ -44,51 +44,53 @@ Usage example
 =============
 
 ```{r, include = FALSE}
-# Patch SpatialCPie::runCPie so that a "phantom user" is started when the app is
-# launched.
-# The phantom user will visit the gadget just to click on the "Done" button.
-phantomUser <- function(url) {
-    system2(
-        command = "R",
-        args = c("--slave,", "--vanilla"),
-        stdout = FALSE,
-        stderr = FALSE,
-        wait = FALSE,
-        input = c(
-            'Sys.sleep(20)', #To ensure that webserver has started
-            'library(webdriver)',
-            'if (is.null(webdriver:::find_phantom())) {
-                 install_phantomjs()
-             }
-            ',
-            'pjs = run_phantomjs()',
-            'ses = Session$new(port = pjs$port)',
-            paste0('ses$go("', url, '")'),
-            'ses$executeScript("
-                 function f() {
-                     if ($(\\\"html\\\").hasClass(\\\"shiny-busy\\\")) {
-                         setTimeout(f, 100);
-                     } else {
-                         $(\\\"#done\\\").click();
-                     }
-                 }
-                 f();
-             ")
-            ',
-            'ses$waitFor("$(\\\"#shiny-disconnected-overlay\\\").length > 0")'
-        )
-    )
-}
+# Patch SpatialCPie::runCPie so that it returns a mock output object instead of
+# starting the web server
 assignInNamespace(
     ns = "SpatialCPie",
     x = "runCPie",
-    value = function(...) {
-        args <- if (!is.null(names(list(...))))
-                    list(...)[which(names(list(...)) %in%
-                        c("", formalArgs(SpatialCPie:::.makeApp)))]
-                else list(...)
-        app <- do.call(SpatialCPie:::.makeApp, args)
-        suppressMessages(shiny::runApp(app, launch.browser = phantomUser))
+    value = function(
+        counts,
+        assignments,
+        image = NULL,
+        spotCoordinates = NULL,
+        view = NULL
+    ) {
+        data <- SpatialCPie:::.preprocessData(
+            counts,
+            assignments,
+            spotCoordinates
+        )
+        likenessScores <- lapply(
+            tail(data$distances, -1),
+            function(x) SpatialCPie:::.likeness(x, 1.0)
+        )
+        arrayPlots <- lapply(
+            likenessScores,
+            function(x) SpatialCPie:::.arrayPlot(
+                scores = x, coordinates = data$coordinates,
+                image =
+                    if (!is.null(image) && !is.null(data$coordinates))
+                        grid::rasterGrob(
+                            image,
+                            width  = grid::unit(1, "npc"),
+                            height = grid::unit(1, "npc"),
+                            interpolate = TRUE
+                        )
+                    else NULL
+            ) +
+             ggplot2::scale_fill_manual(values = data$colors)
+        )
+        list(
+            clusters = do.call(cbind, data$assignments),
+            treePlot = SpatialCPie:::.clusterTree(
+                do.call(cbind, data$assignments),
+                transitionLabels = TRUE
+            ) +
+             ggplot2::scale_color_manual(values = data$colors),
+            piePlots = arrayPlots,
+            piePlotsInfo = likenessScores
+        )
     }
 )
 ```
