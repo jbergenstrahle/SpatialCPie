@@ -47,10 +47,6 @@ Usage example
 # Patch SpatialCPie::runCPie so that a "phantom user" is started when the app is
 # launched.
 # The phantom user will visit the gadget just to click on the "Done" button.
-loadNamespace("webdriver")
-if (is.null(webdriver:::find_phantom())) {
-    webdriver::install_phantomjs()
-}
 phantomUser <- function(url) {
     system2(
         command = "R",
@@ -60,8 +56,12 @@ phantomUser <- function(url) {
         wait = FALSE,
         input = c(
             'Sys.sleep(5)', #To ensure that webserver has started
-            'pjs = webdriver::run_phantomjs()',
-            'ses = webdriver::Session$new(port = pjs$port)',
+            'library(webdriver)',
+            'if (is.null(webdriver:::find_phantom())) {
+                 install_phantomjs()
+             }',
+            'pjs = run_phantomjs()',
+            'ses = Session$new(port = pjs$port)',
             paste0('ses$go("', url, '")'),
             'ses$executeScript("
                 function f() {
