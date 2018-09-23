@@ -59,20 +59,22 @@ phantomUser <- function(url) {
             'library(webdriver)',
             'if (is.null(webdriver:::find_phantom())) {
                  install_phantomjs()
-             }',
+             }
+            ',
             'pjs = run_phantomjs()',
             'ses = Session$new(port = pjs$port)',
             paste0('ses$go("', url, '")'),
             'ses$executeScript("
-                function f() {
-                    if ($(\\\"html\\\").hasClass(\\\"shiny-busy\\\")) {
-                        setTimeout(f, 100);
-                    } else {
-                        $(\\\"#done\\\").click();
-                    }
-                }
-                f();
-            ")',
+                 function f() {
+                     if ($(\\\"html\\\").hasClass(\\\"shiny-busy\\\")) {
+                         setTimeout(f, 100);
+                     } else {
+                         $(\\\"#done\\\").click();
+                     }
+                 }
+                 f();
+             ")
+            ',
             'ses$waitFor("$(\\\"#shiny-disconnected-overlay\\\").length > 0")'
         )
     )
