@@ -14,7 +14,8 @@
 \code{rownames} matching those in \code{scores} and columns \code{x} and
 \code{y} specifying the plotting position of each observation}
 
-\item{image}{a \code{\link[grid]{grid.grob}} to use as background to the plots}
+\item{image}{a \code{\link[grid]{grid.grob}} to use as background to the
+plots}
 
 \item{spotScale}{pie chart size}
 

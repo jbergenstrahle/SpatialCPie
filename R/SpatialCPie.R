@@ -167,6 +167,158 @@ globalVariables(c(
 }
 
 
+#' Tidy assignments
+#'
+#' @param assignments list of assignment vectors.
+#' @return the `assignments`, sorted by resolution and relabeled so that (1) for
+#' each resolution `r`, labels are in `[1..r]` and (2) the overlap between
+#' consecutive assignment vectors is maximized. Additionally, an `r = 1`
+#' resolution is added if it does not already exist.
+#' @keywords internal
+.tidyAssignments <- function(
+    assignments
+) {
+    ## Make sure that all labels in resolution r are in [1..r]
+    assignments <- lapply(
+        assignments,
+        function(assignment) {
+            oldLabels <- unique(assignment)
+            newLabels <- setNames(seq_along(oldLabels), nm = oldLabels)
+            setNames(
+                newLabels[as.character(assignment)],
+                nm = names(assignment)
+            )
+        }
+    )
+
+    ## Sort resolutions
+    names(assignments) <- assignments %>% map_int(max)
+    assignments <- assignments[
+        as.character(sort(as.numeric(names(assignments))))]
+
+    ## Add first resolution if it does not exist
+    if (names(assignments)[1] != "1") {
+        spots <- names(assignments[[1]])
+        assignments <- c(
+            list("1" = setNames(rep(1, length(spots)), nm = spots)),
+            assignments
+        )
+    }
+
+    ## Relabel the data to maximize overlap between labels in consecutive
+    ## resolutions
+    assignments <- .maximizeOverlap(assignments)
+
+    assignments
+}
+
+
+#' Compute cluster distances
+#'
+#' Computes sample-centroid distances.
+#' @param assignments list of assignment vectors.
+#' @param counts count matrix.
+#' @return list of sample-centroid distances for each resolution.
+#' @keywords internal
+.computeClusterDistances <- function(
+    assignments,
+    counts
+) {
+    assignments %>%
+        map(function(assignment) {
+            labels <- unique(assignment)
+            centers <- labels %>%
+                map(~rowMeans(
+                    counts[, which(assignment == .), drop = FALSE]
+                )) %>%
+                invoke(cbind, .)
+            colnames(centers) <- labels
+            .pairwiseDistance(t(centers), t(counts))
+        })
+}
+
+
+#' Compute cluster colors
+#'
+#' Computes colors so that dissimilar clusters are far away in color space.
+#' @param assignments list of assignment vectors.
+#' @param counts count matrix.
+#' @return vector of cluster colors.
+#' @keywords internal
+.computeClusterColors <- function(
+    assignments,
+    counts
+) {
+    assignments %>% unname %>% invoke(c, .) %>%
+        (function(x) data.frame(
+            spot = names(x),
+            cluster = x,
+            stringsAsFactors = FALSE
+        )) %>%
+        inner_join(
+            counts %>%
+                as.data.frame(stringsAsFactors = FALSE) %>%
+                tibble::rownames_to_column("gene") %>%
+                gather(spot, counts, -gene),
+            by = "spot"
+        ) %>%
+        group_by(cluster, gene) %>%
+        summarize(mean = mean(counts)) %>%
+        spread(cluster, mean) %>%
+        select(-gene) %>%
+        as.matrix %>% t %>%
+        stats::prcomp(rank = 2, center = TRUE) %>% `$`("x") %>%
+        (function(x) cbind(
+            50,
+            (2 * (x - min(x)) / (max(x) - min(x)) - 1) * 100
+        )) %>%
+        (colorspace::LAB) %>%
+        (colorspace::hex)(fixup = TRUE)
+}
+
+
+#' Preprocess data
+#'
+#' Preprocesses input data for \code{\link{.makeServer}}.
+#' @param assignments list of assignment vectors.
+#' @param counts count matrix.
+#' @param coordinates spot coordinates.
+#' @return list with the following elements:
+#' - `$assignments`: tidy assignments
+#' - `$distances`: sample-centroid distances
+#' - `$colors`: cluster colors
+#' - `$coordinates`: spot coordinates, either from `coordinates` or parsed from
+#' `assignments`
+#' @keywords internal
+.preprocessData <- function(
+    counts,
+    assignments,
+    coordinates = NULL
+) {
+    ## Compute coordinates and intersect spots across resolutions
+    spots <- assignments %>% map(names) %>% reduce(intersect)
+
+    if (!is.null(coordinates)) {
+        spots <- intersect(spots, rownames(coordinates))
+    } else {
+        c(xcoord, ycoord) %<-% {
+            strsplit(spots, "x") %>% transpose %>% map(as.numeric) }
+        coordinates <- as.data.frame(cbind(x = xcoord, y = ycoord))
+        rownames(coordinates) <- spots
+    }
+
+    counts <- counts[, spots]
+    assignments <- assignments %>% map(~.[spots]) %>% .tidyAssignments()
+
+    list(
+         assignments = assignments,
+         distances = .computeClusterDistances(assignments, counts),
+         colors = .computeClusterColors(assignments, counts),
+         coordinates = coordinates
+    )
+}
+
+
 #' Array pie plot
 #'
 #' @param scores (n, K) scoring matrix
@@ -660,100 +812,18 @@ globalVariables(c(
     image = NULL,
     spotCoordinates = NULL
 ) {
-    ## Compute coordinates and intersect spots across resolutions
-    spots <- assignments %>% map(names) %>% reduce(intersect)
-
-    if (!is.null(spotCoordinates)) {
-        spots <- intersect(spots, rownames(spotCoordinates))
-        coordinates <- spotCoordinates
-    } else {
-        c(xcoord, ycoord) %<-% {
-            strsplit(spots, "x") %>% transpose %>% map(as.numeric) }
-        coordinates <- as.data.frame(cbind(x = xcoord, y = ycoord))
-        rownames(coordinates) <- spots
-    }
-
-    assignments <- assignments %>% map(~.[spots])
-    counts <- counts[, spots]
-
-    ## Relabel the data, making sure that all labels in resolution r are in
-    ## [1..r]
-    assignments <- lapply(
+    data <- .preprocessData(
+        counts,
         assignments,
-        function(assignment) {
-            oldLabels <- unique(assignment)
-            newLabels <- setNames(seq_along(oldLabels), nm = oldLabels)
-            setNames(
-                newLabels[as.character(assignment)],
-                nm = names(assignment)
-            )
-        }
+        spotCoordinates
     )
-
-    ## Sort resolutions
-    names(assignments) <- assignments %>% map_int(max)
-    assignments <- assignments[
-        as.character(sort(as.numeric(names(assignments))))]
-
-    ## Add first resolution (corresponding to the root of the tree)
-    if (names(assignments)[1] != "1") {
-        assignments <- c(
-            list("1" = setNames(rep(1, length(spots)), nm = spots)),
-            assignments
-        )
-    }
-
-    ## Relabel the data to maximize overlap between labels in consecutive
-    ## resolutions
-    assignments <- .maximizeOverlap(assignments)
-
-    ## Compute sample-centroid distances
-    distances <- assignments %>%
-        map(function(assignment) {
-            labels <- unique(assignment)
-            centers <- labels %>%
-                map(~rowMeans(
-                    counts[, which(assignment == .), drop = FALSE]
-                )) %>%
-                invoke(cbind, .)
-            colnames(centers) <- labels
-            .pairwiseDistance(t(centers), t(counts))
-        })
-
-    ## Compute colors so that dissimilar clusters are far away in color space
-    colors <- assignments %>% unname %>% invoke(c, .) %>%
-        (function(x) data.frame(
-            spot = names(x),
-            cluster = x,
-            stringsAsFactors = FALSE
-        )) %>%
-        inner_join(
-            counts %>%
-                as.data.frame(stringsAsFactors = FALSE) %>%
-                tibble::rownames_to_column("gene") %>%
-                gather(spot, counts, -gene),
-            by = "spot"
-        ) %>%
-        group_by(cluster, gene) %>%
-        summarize(mean = mean(counts)) %>%
-        spread(cluster, mean) %>%
-        select(-gene) %>%
-        as.matrix %>% t %>%
-        stats::prcomp(rank = 2, center = TRUE) %>% `$`("x") %>%
-        (function(x) cbind(
-            50,
-            (2 * (x - min(x)) / (max(x) - min(x)) - 1) * 100
-        )) %>%
-        (colorspace::LAB) %>%
-        (colorspace::hex)(fixup = TRUE)
-
     shiny::shinyApp(
         ui = .makeUI(!is.null(image)),
         server = .makeServer(
-            distances = distances,
-            colors = colors,
+            distances = data$distances,
+            colors = data$colors,
             image = image,
-            coordinates = coordinates
+            coordinates = data$coordinates
         )
     )
 }
@@ -820,10 +890,10 @@ runCPie <- function(
     }
     shiny::runGadget(
         app = .makeApp(
-            counts,
-            assignments,
-            image,
-            spotCoordinates
+            counts = counts,
+            assignments = assignments,
+            image = image,
+            spotCoordinates = spotCoordinates
         ),
         viewer = view %||% shiny::dialogViewer("SpatialCPie")
     )
