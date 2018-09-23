@@ -13,10 +13,10 @@ resolution}
 \item{colors}{vector of colors for each cluster label}
 
 \item{image}{background image for the array plots, passed to
-\code{\link[grid]{rasterGrob}}}
+\code{\link[grid]{grid.raster}}}
 
 \item{coordinates}{\code{\link[base]{data.frame}} with
-\code{\link[base]{rownames}} matching the \code{\link[base]{names}} in
+\code{rownames} matching the \code{\link[base]{names}} in
 \code{scores} and columns \code{x} and \code{y} specifying the plotting position of each
 observation}
 }

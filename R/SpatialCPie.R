@@ -171,9 +171,9 @@ globalVariables(c(
 #'
 #' @param scores (n, K) scoring matrix
 #' @param coordinates \code{\link[base]{data.frame}} with
-#' \code{\link[base]{rownames}} matching those in `scores` and columns `x` and
+#' `rownames` matching those in `scores` and columns `x` and
 #' `y` specifying the plotting position of each observation
-#' @param image a \code{\link[grid]{grob}} to use as background to the plots
+#' @param image a \code{\link[grid]{grid.grob}} to use as background to the plots
 #' @param spotScale pie chart size
 #' @param spotOpacity pie chart opacity
 #' @return \code{\link[ggplot2]{ggplot}} object of the pie plot
@@ -364,9 +364,9 @@ globalVariables(c(
 #' resolution
 #' @param colors vector of colors for each cluster label
 #' @param image background image for the array plots, passed to
-#' \code{\link[grid]{rasterGrob}}
+#' \code{\link[grid]{grid.raster}}
 #' @param coordinates \code{\link[base]{data.frame}} with
-#' \code{\link[base]{rownames}} matching the \code{\link[base]{names}} in
+#' `rownames` matching the \code{\link[base]{names}} in
 #' `scores` and columns `x` and `y` specifying the plotting position of each
 #' observation
 #' @return server function, to be passed to \code{\link[shiny]{shinyApp}}
@@ -762,8 +762,8 @@ globalVariables(c(
 #'
 #' Runs the SpatialCPie gadget.
 #' @param counts gene count matrix or a
-#' \code{\link[SummarizedExperiment]{SummarizedExperiment}} object containing
-#' count values.
+#' \code{\link[SummarizedExperiment]{SummarizedExperiment-class}} object
+#' containing count values.
 #' @param assignments list of cluster assignments for each resolution.
 #' @param image image to be used as background to the plot.
 #' @param spotCoordinates \code{\link[base]{data.frame}} with pixel coordinates.

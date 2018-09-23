@@ -11,10 +11,10 @@
 \item{scores}{(n, K) scoring matrix}
 
 \item{coordinates}{\code{\link[base]{data.frame}} with
-\code{\link[base]{rownames}} matching those in \code{scores} and columns \code{x} and
+\code{rownames} matching those in \code{scores} and columns \code{x} and
 \code{y} specifying the plotting position of each observation}
 
-\item{image}{a \code{\link[grid]{grob}} to use as background to the plots}
+\item{image}{a \code{\link[grid]{grid.grob}} to use as background to the plots}
 
 \item{spotScale}{pie chart size}
 
