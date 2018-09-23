@@ -663,7 +663,7 @@ globalVariables(c(
     ## Compute coordinates and intersect spots across resolutions
     spots <- assignments %>% map(names) %>% reduce(intersect)
 
-    if (!is.null(spotCoordinates) != 0) {
+    if (!is.null(spotCoordinates)) {
         spots <- intersect(spots, rownames(spotCoordinates))
         coordinates <- spotCoordinates
     } else {
