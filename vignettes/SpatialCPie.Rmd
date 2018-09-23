@@ -48,7 +48,7 @@ Usage example
 # launched.
 # The phantom user will visit the gadget just to click on the "Done" button.
 loadNamespace("webdriver")
-if (is.null(suppressMessages(webdriver:::find_phantom()))) {
+if (is.null(webdriver:::find_phantom())) {
     webdriver::install_phantomjs()
 }
 phantomUser <- function(url) {
