@@ -10,8 +10,8 @@
 #' @importFrom grid unit
 #' @importFrom methods is
 #' @importFrom purrr
-#' %>% %||% array_branch lift invoke keep map map_dbl map_int partial reduce
-#' transpose
+#' %>% %||% accumulate array_branch lift invoke keep map map_dbl map_int partial
+#' reduce transpose
 #' @importFrom readr read_file write_file
 #' @importFrom shiny debounce observeEvent reactive
 #' @importFrom stats dist setNames
@@ -87,83 +87,69 @@ globalVariables(c(
 
 #' Maximize overlap
 #'
-#' @param xs list of lists of labels
-#' @return `xs`, relabeled so as to maximize the overlap between labels in
+#' @param xss list of lists of labels
+#' @return `xss`, relabeled so as to maximize the overlap between labels in
 #' consecutive label lists
 #' @keywords internal
 .maximizeOverlap <- function(
-    xs
+    xss
 ) {
-    reassignments <- list(
-        unname(head(xs, -1)),
-        unname(tail(xs, -1))
-    ) %>%
-        transpose %>%
-        map(lift(function(prev, cur) {
-            setNames(nm = sort(unique(prev))) %>%
-                map(function(x)
-                    setNames(nm = sort(unique(cur))) %>%
-                        map_dbl(function(y) sum(`*`(prev == x, cur == y)))
-                ) %>%
-                invoke(rbind, .) %>%
-                (function(x) {
-                    nfrom <- nrow(x)
-                    nto <- ncol(x)
-                    n <- max(nfrom, nto)
-                    x_ <- x
-                    x_ <- do.call(
-                        rbind,
-                        c(list(x_), rep(list(rep(0, n)), n - nfrom))
-                    )
-                    x_ <- do.call(
-                        cbind,
-                        c(list(x_), rep(list(rep(0, n)), n - nto))
-                    )
-                    lpSolve::lp.assign(-x_)$solution[
-                        seq_len(nfrom), seq_len(nto), drop = FALSE
-                    ] %>%
-                        `colnames<-`(colnames(x)) %>%
-                        `rownames<-`(rownames(x))
-                })
-        }))
-
-    c(
-        list(xs[[1]]),
-        list(tail(xs, -1), reassignments) %>%
-            transpose %>%
-            reduce(
-                function(acc, x) {
-                    c(accReassignments, accAssignments) %<-% acc
-                    c(assignment, reassignment) %<-% x
-                    rownames(reassignment) <- rownames(reassignment) %>%
-                        map(~
-                            if (. %in% accReassignments) accReassignments[.]
-                            else .
-                        )
-                    reassignmentMap <- apply(
-                        reassignment,
-                        2,
-                        function(x) rownames(reassignment)[which.max(x)]
-                    )
-                    reassignmentMap[!apply(reassignment, 2, max)] <-
-                        setdiff(colnames(reassignment), rownames(reassignment))
-                    list(
-                        reassignmentMap,
-                        c(
-                            accAssignments,
-                            list(vapply(
-                                assignment,
-                                function(x) as.numeric(reassignmentMap[x]),
-                                numeric(1)
-                            ))
-                        )
-                    )
-                },
-                .init = list(character(), list())
+    maximumOverlap <- function(xs, ys) {
+        setNames(nm = sort(unique(xs))) %>%
+            map(function(x)
+                setNames(nm = sort(unique(ys))) %>%
+                    map_dbl(function(y) sum(`*`(xs == x, ys == y)))
             ) %>%
-            `[[`(2)
+            invoke(rbind, .) %>%
+            (function(overlaps) {
+                all <- union(rownames(overlaps), colnames(overlaps))
+                n <- length(all)
+
+                ## Zero-pad overlap matrix so that all labels are represented in
+                ## both the to and from dimensions
+                paddedOverlaps <- overlaps %>%
+                    rbind(do.call(rbind, rep(list(rep(0, n)), n - nrow(overlaps)))) %>%
+                    cbind(do.call(cbind, rep(list(rep(0, n)), n - ncol(overlaps))))
+                rownames(paddedOverlaps)[rownames(paddedOverlaps) == ""] <-
+                    setdiff(all, rownames(paddedOverlaps))
+                colnames(paddedOverlaps)[colnames(paddedOverlaps) == ""] <-
+                    setdiff(all, colnames(paddedOverlaps))
+
+                ## Solve the assignment problem to maximize the overlap
+                lpSolve::lp.assign(-paddedOverlaps)$solution %>%
+                    array_branch(2) %>%
+                    map(~colnames(paddedOverlaps)[which.max(.)]) %>%
+                    setNames(nm = rownames(paddedOverlaps))
+            })
+    }
+
+    ## Compute reassignment map between each label pair
+    reassignments <-
+        list(unname(head(xss, -1)), unname(tail(xss, -1))) %>%
+        transpose %>%
+        map(lift(maximumOverlap))
+
+    ## Sync reassignments by propagating them forward
+    syncedReassignments <- accumulate(
+        reassignments,
+        function(prev, cur) {
+            lapply(cur, function(x) {
+                if (x %in% names(prev)) prev[[x]]
+                else x
+            })
+        }
+    )
+
+    ## Apply reassignments
+    c(
+        list(xss[[1]]),
+        list(tail(xss, -1), syncedReassignments) %>%
+            transpose %>%
+            map(lift(function(xs, reassignment) {
+                vapply(xs, function(x) reassignment[[x]], character(1))
+            }))
     ) %>%
-        setNames(names(xs))
+        setNames(names(xss))
 }
 
 
@@ -227,7 +213,8 @@ globalVariables(c(
     assignments %>%
         map(function(assignment) {
             labels <- unique(assignment)
-            centers <- labels %>%
+            centers <-
+                labels %>%
                 map(~rowMeans(
                     counts[, which(assignment == .), drop = FALSE]
                 )) %>%
@@ -249,31 +236,41 @@ globalVariables(c(
     assignments,
     counts
 ) {
-    assignments %>% unname %>% invoke(c, .) %>%
-        (function(x) data.frame(
-            spot = names(x),
-            cluster = x,
+    concatAssignments <- invoke(c, unname(assignments))
+
+    longCounts <-
+        counts %>%
+        rownames_to_column("gene") %>%
+        gather(spot, counts, -gene)
+
+    meanClusterExpr <-
+        data.frame(
+            spot = names(concatAssignments),
+            cluster = concatAssignments,
             stringsAsFactors = FALSE
-        )) %>%
-        inner_join(
-            counts %>%
-                as.data.frame(stringsAsFactors = FALSE) %>%
-                tibble::rownames_to_column("gene") %>%
-                gather(spot, counts, -gene),
-            by = "spot"
         ) %>%
+        inner_join(longCounts, by = "spot") %>%
         group_by(cluster, gene) %>%
         summarize(mean = mean(counts)) %>%
         spread(cluster, mean) %>%
-        select(-gene) %>%
-        as.matrix %>% t %>%
-        stats::prcomp(rank = 2, center = TRUE) %>% `$`("x") %>%
-        (function(x) cbind(
-            50,
-            (2 * (x - min(x)) / (max(x) - min(x)) - 1) * 100
-        )) %>%
-        (colorspace::LAB) %>%
-        (colorspace::hex)(fixup = TRUE)
+        as.data.frame() %>%
+        tibble::column_to_rownames("gene")
+
+    clusterLoadings <- stats::prcomp(
+        t(meanClusterExpr),
+        rank = 2,
+        center = TRUE
+    )$x
+    minLoading <- apply(clusterLoadings, 2, min)
+    maxLoading <- apply(clusterLoadings, 2, max)
+
+    clusterColors <- cbind(
+        50,
+        200 * t((t(clusterLoadings) - minLoading) / (maxLoading - minLoading)) - 100
+    )
+
+    colorspace::LAB(clusterColors) %>%
+        colorspace::hex(fixup = TRUE)
 }
 
 
@@ -296,24 +293,33 @@ globalVariables(c(
     coordinates = NULL
 ) {
     ## Compute coordinates and intersect spots across resolutions
-    spots <- assignments %>% map(names) %>% reduce(intersect)
+    spots <-
+        assignments %>%
+        map(names) %>%
+        reduce(intersect)
 
     if (!is.null(coordinates)) {
         spots <- intersect(spots, rownames(coordinates))
     } else {
         c(xcoord, ycoord) %<-% {
-            strsplit(spots, "x") %>% transpose %>% map(as.numeric) }
+            strsplit(spots, "x") %>%
+                transpose %>%
+                map(as.numeric)
+        }
         coordinates <- as.data.frame(cbind(x = xcoord, y = ycoord))
         rownames(coordinates) <- spots
     }
 
     counts <- counts[, spots]
-    assignments <- assignments %>% map(~.[spots]) %>% .tidyAssignments()
+    tidyAssignments <-
+        assignments %>%
+        map(~.[spots]) %>%
+        .tidyAssignments()
 
     list(
-         assignments = assignments,
-         distances = .computeClusterDistances(assignments, counts),
-         colors = .computeClusterColors(assignments, counts),
+         assignments = tidyAssignments,
+         distances = .computeClusterDistances(tidyAssignments, counts),
+         colors = .computeClusterColors(tidyAssignments, counts),
          coordinates = coordinates
     )
 }
@@ -410,10 +416,12 @@ globalVariables(c(
         ))
     }
 
-    data <- assignments %>% as.data.frame %>%
+    data <-
+        assignments %>%
+        as.data.frame(stringsAsFactors = FALSE) %>%
         rownames_to_column("spot") %>%
         gather(resolution, cluster, -spot, convert = TRUE) %>%
-        mutate(node = sprintf("R%dC%d", resolution, cluster))
+        mutate(node = sprintf("R%sC%s", resolution, cluster))
 
     graph <- igraph::graph_from_data_frame(
         d = data %>%
@@ -439,13 +447,15 @@ globalVariables(c(
     )
 
     vertices <- cbind(
-        igraph::layout.reingold.tilford(graph) %>% `colnames<-`(c("x", "y")),
+        igraph::layout.reingold.tilford(graph) %>%
+            `colnames<-`(c("x", "y")),
         igraph::get.vertex.attribute(graph) %>%
             as.data.frame(stringsAsFactors = FALSE)
     )
 
     edges <- c(
-        igraph::get.edgelist(graph) %>% array_branch(2) %>%
+        igraph::get.edgelist(graph) %>%
+            array_branch(2) %>%
             `names<-`(c("from", "to")),
         igraph::get.edge.attribute(graph)
     ) %>%
