@@ -20,7 +20,8 @@ Depends:
 Imports:
     colorspace (>= 1.3-2),
     dplyr (>= 0.7.6),
-    ggiraph (>= 0.4.4),
+    ggiraph (>= 0.5.0),
+    ggiraph (< 0.7.0),
     ggplot2 (>= 3.0.0),
     ggrepel (>= 0.8.0),
     grid (>= 3.5.1),

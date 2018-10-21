@@ -555,13 +555,6 @@ globalVariables(c(
         spotOpacity     <- reactive({ input$spotOpacity     }) %>% debounce(500)
         spotSize        <- reactive({ input$spotSize        }) %>% debounce(500)
 
-        selection <- NULL
-        setSelection <- function(value) {
-            assign("selection", value, pos = parent.frame())
-        }
-        reactiveSelection <- reactive({ setSelection(input$tree_selected) })
-        setSelection(tail(names(distances), -1))
-
         ###
         ## CLUSTER TREE
         treePlot <- reactive({
@@ -574,70 +567,37 @@ globalVariables(c(
                 scale_color_manual(values = colors)
         })
 
-        output$tree <- ggiraph::renderggiraph({
-            plot <- ggiraph::ggiraph(
-                code = print(treePlot()),
-                hover_css = paste(
-                    "stroke:#888;",
-                    "stroke-width:0.2em;",
-                    "stroke-opacity:0.5;"
-                ),
-                selected_css = paste(
+        output$tree <- ggiraph::renderGirafe({
+            plot <- ggiraph::girafe_options(
+                x = ggiraph::girafe(ggobj = treePlot()),
+                ggiraph::opts_hover(css = paste(
+                     "stroke:#888;",
+                     "stroke-width:0.2em;",
+                     "stroke-opacity:0.5;"
+                )),
+                ggiraph::opts_selection(css = paste(
                     "stroke:#000;",
                     "stroke-width:0.2em;",
                     "stroke-opacity:0.5;"
-                )
+                ))
             )
 
             ## Copy selection from the previous tree
-            ## Note: This could also have been done by sending the
-            ## `"tree_set"` message on the `"onFlushed"` event. However,
-            ## that would create a race condition between the message and
-            ## the browser's loading of the ggiraph dependency file; if the
-            ## latter is loaded last, the selection would be overwritten.
-            ## Thus, we instead modify the dependency file directly to
-            ## include the plot's initial selection.
-            if (length(selection) > 0) {
-                dependency <- paste(
-                    plot$dependencies[[1]]$src$file,
-                    plot$dependencies[[1]]$script,
-                    sep = "/"
-                )
-                src <- read_file(dependency)
-
-                ## Refresh selection annotations when plot is initialized
-                src <- sub(
-                    "(function init_prop_[^{]*\\{[^}]*)",
-                    sprintf(
-                        "\\1refresh_selected('%s', '%s', '%s');",
-                        plot$x$sel_array_name,
-                        plot$x$selected_class,
-                        plot$x$uid
-                    ),
-                    src
-                )
-
-                ## Set initial selection
-                selection_array <- sprintf(
-                    "[%s]",
-                    paste0("'", selection, "'") %>%
-                        invoke(paste, sep = ",", .)
-                )
-                src <- paste0(
-                    src,
-                    sprintf("%s = %s;", plot$x$sel_array_name, selection_array),
-                    sprintf("Shiny.setInputValue('tree_selected', %s);",
-                        selection_array)
-                )
-
-                write_file(src, dependency)
+            if (length(input$tree_selected) > 0) {
+                session$onFlushed(function() isolate(session$sendCustomMessage(
+                    "tree_set",
+                    input$tree_selected
+                )))
             }
-
-            ## Remove UI element for lasso selection etc.
-            plot$x$ui_html <- ""
 
             plot
         })
+
+        ## Set initial selection
+        session$onFlushed(function() session$sendCustomMessage(
+            "tree_set",
+            tail(names(distances), -1)
+        ))
 
         ###
         ## ARRAY PLOT
@@ -678,7 +638,7 @@ globalVariables(c(
                         message(sprintf("Loading resolution \"%s\"...", d_))
                         eval(call(plotName))
                     },
-                    width = 500, height = 500
+                    width = 600, height = 500
                 )
             })()
         }
@@ -690,13 +650,9 @@ globalVariables(c(
                 map(~shiny::div(
                     style = "display: inline-block;",
                     shiny::div(
-                        style = paste(
-                            "position: relative;",
-                            "width: 500px;",
-                            "height: 500px;"
-                        ),
+                        style = "position: relative",
                         list(
-                            shiny::plotOutput(.),
+                            shiny::plotOutput(., height="auto"),
                             shiny::div(
                                 style = paste(
                                     "z-index: -1;",
@@ -723,14 +679,14 @@ globalVariables(c(
         ## EXPORT
         outputs <- reactive({
             list(
-                clusters = assignments[, selection],
+                clusters = assignments[, input$tree_selected],
                 treePlot = treePlot(),
                 piePlots = lapply(
-                    setNames(nm = selection),
+                    setNames(nm = input$tree_selected),
                     function(x) eval(call(sprintf("array_%s", x)))
                 ),
                 piePlotsInfo = lapply(
-                    setNames(nm = selection),
+                    setNames(nm = input$tree_selected),
                     function(x) eval(call(sprintf("array_info_%s", x)))
                 )
             )
@@ -750,7 +706,21 @@ globalVariables(c(
 ) {
     miniUI::miniPage(
         shiny::tags$head(shiny::tags$style(shiny::HTML(
-            ".recalculating { position: relative; z-index: -2 }"))),
+            paste(sep = "\n",
+                "input[type=radio] { margin-top: 0 }",
+                # ^ Remove radio button top margin (shiny bug?)
+
+                ".recalculating { position: relative; z-index: -2 }",
+                # ^ Position loading boxes
+
+                ".ggiraph-toolbar { display: none }",
+                # ^ Hide ggiraph toolbar
+
+                ".row { display: flex }",
+                "svg { width: 600px !important }"
+                # ^ Set tree plot size explicitly
+            )
+        ))),
         miniUI::gadgetTitleBar("SpatialCPie"),
         miniUI::miniContentPanel(
             shiny::fillPage(
@@ -770,9 +740,11 @@ globalVariables(c(
                             max = 1, min = 0, value = 0.05, step = 0.01
                         )
                     ),
-                    shiny::div(
-                        style = "text-align: center",
-                        shiny::mainPanel(ggiraph::ggiraphOutput("tree"))
+                    shiny::mainPanel(style = "text-align: center",
+                        ggiraph::girafeOutput(
+                            "tree",
+                            width = "100%", height = "100%"
+                        )
                     )
                 ),
                 shiny::hr(),
