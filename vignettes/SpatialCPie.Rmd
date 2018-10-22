@@ -80,7 +80,7 @@ assignInNamespace(
                         )
                     else NULL
             ) +
-             ggplot2::scale_fill_manual(values = data$colors)
+                ggplot2::scale_fill_manual(values = data$colors)
         )
         list(
             clusters = do.call(cbind, data$assignments),
@@ -88,7 +88,7 @@ assignInNamespace(
                 do.call(cbind, data$assignments),
                 transitionLabels = TRUE
             ) +
-             ggplot2::scale_color_manual(values = data$colors),
+                ggplot2::scale_color_manual(values = data$colors),
             piePlots = arrayPlots,
             piePlotsInfo = likenessScores
         )
