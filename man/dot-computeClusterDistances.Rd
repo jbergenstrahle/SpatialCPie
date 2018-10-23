@@ -7,7 +7,7 @@
 .computeClusterDistances(assignments, counts)
 }
 \arguments{
-\item{assignments}{list of assignment vectors.}
+\item{assignments}{\code{data.frame} with columns \code{unit}, \code{resolution}, \code{cluster}.}
 
 \item{counts}{count matrix.}
 }

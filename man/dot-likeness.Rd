@@ -7,12 +7,12 @@
 .likeness(d, c = 1)
 }
 \arguments{
-\item{d}{(n, K) distance matrix}
+\item{d}{distance vector}
 
 \item{c}{log multiplier}
 }
 \value{
-(n, K) scoring matrix
+vector of scores
 }
 \description{
 Likeness score

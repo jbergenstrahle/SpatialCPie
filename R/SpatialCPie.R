@@ -1,5 +1,5 @@
 #' @importFrom dplyr
-#' filter group_by inner_join mutate n select summarize ungroup
+#' filter group_by inner_join mutate n rename select summarize ungroup
 #' @importFrom ggiraph geom_point_interactive
 #' @importFrom ggplot2
 #' aes coord_fixed element_blank geom_segment ggplot ggtitle guides guide_legend
@@ -16,8 +16,8 @@
 #' @importFrom shiny debounce observeEvent reactive
 #' @importFrom stats dist setNames
 #' @importFrom SummarizedExperiment assay
-#' @importFrom tibble rownames_to_column
-#' @importFrom tidyr gather spread
+#' @importFrom tibble column_to_rownames rownames_to_column
+#' @importFrom tidyr gather separate spread unite
 #' @importFrom tidyselect everything quo
 #' @importFrom utils head tail
 #' @importFrom utils str
@@ -56,16 +56,16 @@ globalVariables(c(
 
 #' Likeness score
 #'
-#' @param d (n, K) distance matrix
+#' @param d distance vector
 #' @param c log multiplier
-#' @return (n, K) scoring matrix
+#' @return vector of scores
 #' @keywords internal
 .likeness <- function(
     d,
     c = 1.0
 ) {
     score <- exp(-c * d)
-    score / rowSums(score)
+    score / sum(score)
 }
 
 
@@ -184,9 +184,9 @@ globalVariables(c(
 
     ## Add first resolution if it does not exist
     if (names(assignments)[1] != "1") {
-        spots <- names(assignments[[1]])
+        units <- names(assignments[[1]])
         assignments <- c(
-            list("1" = setNames(rep(1, length(spots)), nm = spots)),
+            list("1" = setNames(rep(1, length(units)), nm = units)),
             assignments
         )
     }
@@ -195,6 +195,20 @@ globalVariables(c(
     ## resolutions
     assignments <- .maximizeOverlap(assignments)
 
+    ## Concatenate assignments to `data.frame`
+    assignments <-
+        list(names(assignments), assignments) %>%
+        transpose() %>%
+        map(lift(function(res, xs)
+            data.frame(
+                name = sprintf("resolution %s-cluster %s", res, xs),
+                resolution = res,
+                cluster = xs
+            ) %>%
+            tibble::rownames_to_column("unit")
+        )) %>%
+        invoke(rbind, .)
+
     assignments
 }
 
@@ -202,7 +216,7 @@ globalVariables(c(
 #' Compute cluster distances
 #'
 #' Computes sample-centroid distances.
-#' @param assignments list of assignment vectors.
+#' @param assignments `data.frame` with columns `unit`, `resolution`, `cluster`.
 #' @param counts count matrix.
 #' @return list of sample-centroid distances for each resolution.
 #' @keywords internal
@@ -210,18 +224,29 @@ globalVariables(c(
     assignments,
     counts
 ) {
-    assignments %>%
-        map(function(assignment) {
-            labels <- unique(assignment)
-            centers <-
-                labels %>%
-                map(~rowMeans(
-                    counts[, which(assignment == .), drop = FALSE]
-                )) %>%
-                invoke(cbind, .)
-            colnames(centers) <- labels
-            .pairwiseDistance(t(centers), t(counts))
-        })
+    longCounts <-
+        counts %>%
+        rownames_to_column("gene") %>%
+        gather(spot, count, -gene)
+
+    clusterCenters <-
+        assignments %>%
+        inner_join(longCounts, by = c("unit" = "spot")) %>%
+        unite("key", name, resolution, cluster) %>%
+        group_by(key, gene) %>%
+        summarize(mean = mean(count)) %>%
+        spread(key, mean) %>%
+        as.data.frame() %>%
+        column_to_rownames("gene")
+
+    clusterDistances <-
+        .pairwiseDistance(t(clusterCenters), t(counts)) %>%
+        as.data.frame() %>%
+        rownames_to_column("spot") %>%
+        gather(key, distance, -spot) %>%
+        separate(key, c("name", "resolution", "cluster"), sep = "_")
+
+    clusterDistances
 }
 
 
@@ -236,25 +261,20 @@ globalVariables(c(
     assignments,
     counts
 ) {
-    concatAssignments <- invoke(c, unname(assignments))
 
     longCounts <-
         counts %>%
         rownames_to_column("gene") %>%
-        gather(spot, counts, -gene)
+        gather(unit, counts, -gene)
 
     meanClusterExpr <-
-        data.frame(
-            spot = names(concatAssignments),
-            cluster = concatAssignments,
-            stringsAsFactors = FALSE
-        ) %>%
-        inner_join(longCounts, by = "spot") %>%
-        group_by(cluster, gene) %>%
+        assignments %>%
+        inner_join(longCounts, by = "unit") %>%
+        group_by(name, gene) %>%
         summarize(mean = mean(counts)) %>%
-        spread(cluster, mean) %>%
+        spread(name, mean) %>%
         as.data.frame() %>%
-        tibble::column_to_rownames("gene")
+        column_to_rownames("gene")
 
     clusterLoadings <- stats::prcomp(
         t(meanClusterExpr),
@@ -316,9 +336,16 @@ globalVariables(c(
         map(~.[spots]) %>%
         .tidyAssignments()
 
+    scores <-
+        .computeClusterDistances(tidyAssignments, counts) %>%
+        group_by(name) %>%
+        mutate(score = .likeness(distance)) %>%
+        ungroup() %>%
+        select(-distance)
+
     list(
          assignments = tidyAssignments,
-         distances = .computeClusterDistances(tidyAssignments, counts),
+         scores = scores,
          colors = .computeClusterColors(tidyAssignments, counts),
          coordinates = coordinates
     )
@@ -344,7 +371,7 @@ globalVariables(c(
     spotScale = 1,
     spotOpacity = 1
 ) {
-    spots <- intersect(rownames(scores), rownames(coordinates))
+    spots <- intersect(scores$spot, rownames(coordinates))
 
     r <- spotScale * min(dist(coordinates[spots, ])) / 2
 
@@ -367,18 +394,24 @@ globalVariables(c(
 
     coordinates$y <- ymax - coordinates$y + ymin
 
+    wideScores <-
+        scores %>%
+        spread(name, score) %>%
+        as.data.frame() %>%
+        column_to_rownames("spot")
+
     ggplot() +
         annotation +
         scatterpie::geom_scatterpie(
             mapping = aes(x = x, y = y, r = r),
-            data = cbind(scores[spots, ], coordinates[spots, ]),
-            cols = colnames(scores),
+            data = cbind(wideScores[spots, ], coordinates[spots, ]),
+            cols = colnames(wideScores),
             alpha = spotOpacity
         ) +
         coord_fixed() +
         scale_x_continuous(expand = c(0, 0), limits = c(xmin, xmax)) +
         scale_y_continuous(expand = c(0, 0), limits = c(ymin, ymax)) +
-        guides(fill = guide_legend(title = "Cluster")) +
+        guides(fill = guide_legend(title = NULL)) +
         theme_bw() +
         theme(
             axis.text = element_blank(),
@@ -390,8 +423,8 @@ globalVariables(c(
 
 #' Cluster tree
 #'
-#' @param assignments (n, R) assignment matrix, where R is the number of
-#' resolutions
+#' @param assignments `data.frame` with columns `"name"`, `"resolution"`,
+#' `"cluster"`
 #' @param transitionProportions how to compute the transition proportions.
 #' Possible values are:
 #' - `"From"`: based on the total number of assignments in the lower-resolution
@@ -418,10 +451,8 @@ globalVariables(c(
 
     data <-
         assignments %>%
-        as.data.frame(stringsAsFactors = FALSE) %>%
-        rownames_to_column("spot") %>%
-        gather(resolution, cluster, -spot, convert = TRUE) %>%
-        mutate(node = sprintf("R%sC%s", resolution, cluster))
+        mutate(resolution = as.numeric(resolution)) %>%
+        rename(node = name)
 
     graph <- igraph::graph_from_data_frame(
         d = data %>%
@@ -429,7 +460,7 @@ globalVariables(c(
             (function(x) inner_join(
                 x,
                 x %>% select(everything(), toCluster = cluster, toNode = node),
-                by = c("spot", "toResolution" = "resolution")
+                by = c("unit", "toResolution" = "resolution")
             )) %>%
             group_by(node, toNode, cluster, toCluster) %>%
             summarize(transCount = n()) %>%
@@ -484,11 +515,11 @@ globalVariables(c(
             aes(
                 x, y,
                 data_id = as.factor(resolution),
-                color = as.factor(cluster),
+                color = name,
                 size = size,
                 tooltip = sprintf("%s: %d", name, size)
             ),
-            data = vertices %>% filter(name != "R1C1")
+            data = vertices %>% filter(resolution != 1)
         ) +
         {
             if (isTRUE(transitionLabels))
@@ -497,8 +528,8 @@ globalVariables(c(
                         x = (x + xend) / 2,
                         y = (y + yend) / 2,
                         color = as.factor(
-                            if (transitionProportions == "To") toCluster
-                            else cluster
+                            if (transitionProportions == "To") to
+                            else from
                         ),
                         label = round(transProp, 2)
                     ),
@@ -535,14 +566,16 @@ globalVariables(c(
 #' @return server function, to be passed to \code{\link[shiny]{shinyApp}}
 #' @keywords internal
 .makeServer <- function(
-    distances,
+    assignments,
+    scores,
     colors,
     image,
     coordinates
 ) {
-    assignments <- distances %>%
-        map(~apply(., 1, function(x) as.numeric(colnames(.))[which.min(x)])) %>%
-        invoke(cbind, .)
+    resolutions <-
+        levels(assignments$resolution) %>%
+        as.numeric() %>%
+        keep(~. != 1)
 
     function(input, output, session) {
         ###
@@ -551,14 +584,13 @@ globalVariables(c(
         edgeThreshold   <- reactive({ input$edgeThreshold   }) %>% debounce(500)
         edgeLabels      <- reactive({ input$edgeLabels      })
         showImage       <- reactive({ input$showImage       })
-        scoreMultiplier <- reactive({ input$simC            }) %>% debounce(500)
         spotOpacity     <- reactive({ input$spotOpacity     }) %>% debounce(500)
         spotSize        <- reactive({ input$spotSize        }) %>% debounce(500)
 
         ###
         ## CLUSTER TREE
         treePlot <- reactive({
-            .clusterTree(
+            p <- .clusterTree(
                 assignments,
                 transitionProportions = edgeProportions(),
                 transitionLabels = edgeLabels() == "Show",
@@ -595,27 +627,24 @@ globalVariables(c(
 
         ## Set initial selection
         session$onFlushed(function() session$sendCustomMessage(
-            "tree_set",
-            tail(names(distances), -1)
+            "tree_set", resolutions
         ))
 
         ###
         ## ARRAY PLOT
-        for (d in tail(names(distances), -1)) {
+        for (r in resolutions) {
             ## We evaluate the below block in a new frame (with anonymous
-            ## function call) in order to protect the value of `d`, which
+            ## function call) in order to protect the value of `r`, which
             ## will have changed when the reactive expressions are
             ## evaluated.
             (function() {
-                d_ <- d
-                infoName <- sprintf("array_info_%s", d_)
-                plotName <- sprintf("array_%s", d_)
-                assign(envir = parent.frame(), infoName, reactive(
-                    .likeness(distances[[d_]], scoreMultiplier())
-                ))
+                r_ <- r
+                plotName <- sprintf("array_%s", r_)
                 assign(envir = parent.frame(), plotName, reactive(
                     .arrayPlot(
-                        scores = eval(call(infoName)),
+                        scores = scores %>%
+                            filter(resolution == r_) %>%
+                            select(spot, name, score),
                         coordinates = coordinates,
                         image =
                             if (!is.null(image) && !is.null(coordinates) &&
@@ -631,11 +660,11 @@ globalVariables(c(
                         spotOpacity = spotOpacity() / 100
                     ) +
                         scale_fill_manual(values = colors) +
-                        ggtitle(sprintf("Resolution %s", d_))
+                        ggtitle(sprintf("Resolution %s", r_))
                 ))
-                output[[paste0("plot", d_)]] <- shiny::renderPlot(
+                output[[paste0("plot", r_)]] <- shiny::renderPlot(
                     {
-                        message(sprintf("Loading resolution \"%s\"...", d_))
+                        message(sprintf("Loading resolution \"%s\"...", r_))
                         eval(call(plotName))
                     },
                     width = 600, height = 500
@@ -684,10 +713,6 @@ globalVariables(c(
                 piePlots = lapply(
                     setNames(nm = input$tree_selected),
                     function(x) eval(call(sprintf("array_%s", x)))
-                ),
-                piePlotsInfo = lapply(
-                    setNames(nm = input$tree_selected),
-                    function(x) eval(call(sprintf("array_info_%s", x)))
                 )
             )
         })
@@ -757,11 +782,6 @@ globalVariables(c(
                             )
                         else NULL,
                         shiny::numericInput(
-                            "simC",
-                            "Score multiplier:",
-                            max = 10, min = 0.1, value = 1, step = 0.2
-                        ),
-                        shiny::numericInput(
                             "spotOpacity",
                             "Opacity:",
                             max = 100, min = 1, value = 100, step = 10
@@ -802,7 +822,8 @@ globalVariables(c(
     shiny::shinyApp(
         ui = .makeUI(!is.null(image)),
         server = .makeServer(
-            distances = data$distances,
+            assignments = data$assignments,
+            scores = data$scores,
             colors = data$colors,
             image = image,
             coordinates = data$coordinates

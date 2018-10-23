@@ -8,8 +8,8 @@
   transitionLabels = FALSE, transitionThreshold = 0)
 }
 \arguments{
-\item{assignments}{(n, R) assignment matrix, where R is the number of
-resolutions}
+\item{assignments}{\code{data.frame} with columns \code{"name"}, \code{"resolution"},
+\code{"cluster"}}
 
 \item{transitionProportions}{how to compute the transition proportions.
 Possible values are:

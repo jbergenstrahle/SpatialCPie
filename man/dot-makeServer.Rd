@@ -4,12 +4,9 @@
 \alias{.makeServer}
 \title{SpatialCPie server}
 \usage{
-.makeServer(distances, colors, image, coordinates)
+.makeServer(assignments, scores, colors, image, coordinates)
 }
 \arguments{
-\item{distances}{list of spot-cluster distance matrices, one for each
-resolution}
-
 \item{colors}{vector of colors for each cluster label}
 
 \item{image}{background image for the array plots, passed to
@@ -19,6 +16,9 @@ resolution}
 \code{rownames} matching the \code{\link[base]{names}} in
 \code{scores} and columns \code{x} and \code{y} specifying the plotting position of each
 observation}
+
+\item{distances}{list of spot-cluster distance matrices, one for each
+resolution}
 }
 \value{
 server function, to be passed to \code{\link[shiny]{shinyApp}}
