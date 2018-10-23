@@ -201,7 +201,7 @@ globalVariables(c(
         transpose() %>%
         map(lift(function(res, xs)
             data.frame(
-                name = sprintf("resolution %s-cluster %s", res, xs),
+                name = sprintf("resolution %s, cluster %s", res, xs),
                 resolution = res,
                 cluster = xs
             ) %>%
@@ -411,7 +411,6 @@ globalVariables(c(
         coord_fixed() +
         scale_x_continuous(expand = c(0, 0), limits = c(xmin, xmax)) +
         scale_y_continuous(expand = c(0, 0), limits = c(ymin, ymax)) +
-        guides(fill = guide_legend(title = NULL)) +
         theme_bw() +
         theme(
             axis.text = element_blank(),
@@ -478,8 +477,8 @@ globalVariables(c(
     )
 
     vertices <- cbind(
-        igraph::layout.reingold.tilford(graph) %>%
-            `colnames<-`(c("x", "y")),
+        igraph::layout_as_tree(graph, flip.y = FALSE) %>%
+            `colnames<-`(c("y", "x")),
         igraph::get.vertex.attribute(graph) %>%
             as.data.frame(stringsAsFactors = FALSE)
     )
@@ -500,6 +499,18 @@ globalVariables(c(
             vertices %>% select(name, xend = x, yend = y),
             by = c("to" = "name")
         )
+
+    labels <-
+        vertices %>%
+        select(resolution, x, y) %>%
+        filter(resolution != 1) %>%
+        mutate(ymin = min(y), ymax = max(y)) %>%
+        group_by(resolution) %>%
+        summarize(
+            x = mean(x),
+            y = first(ymax) + 0.1 * (first(ymax) - first(ymin))
+        ) %>%
+        mutate(label = sprintf("Resolution %d", resolution))
 
     ggplot() +
         geom_segment(
@@ -538,8 +549,14 @@ globalVariables(c(
                 )
             else NULL
         } +
+        ggplot2::geom_text(
+            aes(x, y, label = label),
+            data = labels
+        ) +
         labs(alpha = "Proportion", color = "Cluster") +
         scale_size(guide = "none", range = c(2, 7)) +
+        scale_x_continuous(expand = c(0.1, 0.1)) +
+        guides(alpha = FALSE, color = FALSE) +
         theme_bw() +
         theme(
             axis.ticks.x = element_blank(),
@@ -547,7 +564,9 @@ globalVariables(c(
             axis.title.x = element_blank(),
             axis.title.y = element_blank(),
             axis.text.x = element_blank(),
-            axis.text.y = element_blank()
+            axis.text.y = element_blank(),
+            panel.grid = element_blank(),
+            panel.border = element_blank()
         )
 }
 
@@ -639,12 +658,13 @@ globalVariables(c(
             ## evaluated.
             (function() {
                 r_ <- r
+                scores_ <-
+                    scores %>%
+                    filter(resolution == r_)
                 plotName <- sprintf("array_%s", r_)
                 assign(envir = parent.frame(), plotName, reactive(
                     .arrayPlot(
-                        scores = scores %>%
-                            filter(resolution == r_) %>%
-                            select(spot, name, score),
+                        scores = scores_ %>% select(spot, name, score),
                         coordinates = coordinates,
                         image =
                             if (!is.null(image) && !is.null(coordinates) &&
@@ -659,7 +679,11 @@ globalVariables(c(
                         spotScale = spotSize() / 5,
                         spotOpacity = spotOpacity() / 100
                     ) +
-                        scale_fill_manual(values = colors) +
+                        guides(fill = guide_legend(title = "Cluster")) +
+                        scale_fill_manual(
+                            values = colors,
+                            labels = unique(scores_$cluster)
+                        ) +
                         ggtitle(sprintf("Resolution %s", r_))
                 ))
                 output[[paste0("plot", r_)]] <- shiny::renderPlot(
@@ -732,6 +756,9 @@ globalVariables(c(
     miniUI::miniPage(
         shiny::tags$head(shiny::tags$style(shiny::HTML(
             paste(sep = "\n",
+                "h3 { font-size: 1.3em }",
+                "h3:first-child { margin-top: 0 }",
+
                 "input[type=radio] { margin-top: 0 }",
                 # ^ Remove radio button top margin (shiny bug?)
 
@@ -742,7 +769,7 @@ globalVariables(c(
                 # ^ Hide ggiraph toolbar
 
                 ".row { display: flex }",
-                "svg { width: 600px !important }"
+                "svg { height: 500px !important }"
                 # ^ Set tree plot size explicitly
             )
         ))),
@@ -751,6 +778,7 @@ globalVariables(c(
             shiny::fillPage(
                 shiny::sidebarLayout(
                     shiny::sidebarPanel(width = 3,
+                        shiny::h3("Cluster Tree"),
                         shiny::radioButtons(
                             "edgeLabels",
                             "Edge labels:", c("Show", "Hide")
@@ -775,6 +803,7 @@ globalVariables(c(
                 shiny::hr(),
                 shiny::sidebarLayout(
                     shiny::sidebarPanel(width = 3,
+                        shiny::h3("Array Plots"),
                         if (isTRUE(imageButton))
                             shiny::radioButtons(
                                 "showImage",
