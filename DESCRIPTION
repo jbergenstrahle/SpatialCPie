@@ -31,6 +31,7 @@ Imports:
     miniUI (>= 0.1.1.1),
     purrr (>= 0.2.5),
     readr (>= 1.1.1),
+    rlang (>= 0.2.2),
     scatterpie (>= 0.1.2),
     shiny (>= 1.1.0),
     stats (>= 3.5.0),

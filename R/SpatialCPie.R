@@ -2,7 +2,8 @@
 #' filter first group_by inner_join mutate n rename select summarize ungroup
 #' @importFrom ggiraph geom_point_interactive
 #' @importFrom ggplot2
-#' aes coord_fixed element_blank geom_segment ggplot ggtitle guides guide_legend
+#' aes_ aes_string coord_fixed element_blank geom_segment ggplot ggtitle guides
+#' guide_legend
 #' labs
 #' theme theme_bw
 #' scale_color_manual scale_fill_manual scale_size
@@ -13,7 +14,7 @@
 #' %>% %||% accumulate array_branch lift invoke keep map map_dbl map_int partial
 #' reduce transpose
 #' @importFrom readr read_file write_file
-#' @importFrom rlang !! sym
+#' @importFrom rlang !! := .data sym
 #' @importFrom shiny debounce observeEvent reactive
 #' @importFrom stats dist setNames
 #' @importFrom SummarizedExperiment assay
@@ -30,26 +31,8 @@
 ## (ref: https://stackoverflow.com/a/12429344)
 globalVariables(c(
     ".",
-    "accAssignments",
-    "accReassignments",
-    "assignment",
-    "cluster",
-    "gene",
-    "label",
-    "name",
-    "node",
-    "resolution",
-    "size",
-    "spot",
-    "toCluster",
-    "toNode",
-    "transCount",
-    "transProp",
-    "x",
+    "otherMargin",
     "xcoord",
-    "xend",
-    "y",
-    "yend",
     "ycoord",
     NULL
 ))
@@ -278,24 +261,34 @@ globalVariables(c(
         )) %>%
         setNames(resolutions) %>%
         .tidyAssignments() %>%
-        rename(!! sym(margin) := unit)
+        rename(!! sym(margin) := .data$unit)
 
     longCounts <-
         counts %>%
         as.data.frame() %>%
         rownames_to_column("gene") %>%
-        gather(spot, count, -gene)
+        gather("spot", "count", -.data$gene)
 
     clusterMeans <-
         assignments %>%
         inner_join(longCounts, by = margin) %>%
-        group_by(name, resolution, cluster, !! sym(otherMargin)) %>%
-        summarize(mean = mean(count)) %>%
+        group_by(
+            .data$name,
+            .data$resolution,
+            .data$cluster,
+            !! sym(otherMargin)
+        ) %>%
+        summarize(mean = mean(.data$count)) %>%
         ungroup()
 
     colors <-
-        clusterMeans %>% select(name, !! sym(otherMargin), mean) %>%
-        spread(name, mean) %>%
+        clusterMeans %>%
+        select(
+            .data$name,
+            .data$mean,
+            !! sym(otherMargin)
+        ) %>%
+        spread(.data$name, .data$mean) %>%
         as.data.frame() %>%
         column_to_rownames(otherMargin) %>%
         .computeClusterColors()
@@ -304,17 +297,30 @@ globalVariables(c(
         if (margin == "spot") {
             longCounts %>%
                 inner_join(clusterMeans, by = "gene") %>%
-                group_by(resolution, spot, cluster, name) %>%
-                summarize(distance = sqrt(sum((count - mean) ^ 2))) %>%
-                group_by(resolution, spot) %>%
-                mutate(score = .likeness(distance)) %>%
+                group_by(
+                    .data$resolution,
+                    .data$spot,
+                    .data$cluster,
+                    .data$name
+                ) %>%
+                summarize(
+                    distance = sqrt(sum((.data$count - .data$mean) ^ 2))
+                ) %>%
                 ungroup() %>%
-                select(-distance)
+                group_by(.data$resolution, .data$spot) %>%
+                mutate(score = .likeness(.data$distance)) %>%
+                ungroup() %>%
+                select(-.data$distance)
         } else {
             assignments %>%
                 inner_join(longCounts, by = "gene") %>%
-                group_by(resolution, spot, cluster, name) %>%
-                summarize(score = sum(count)) %>%
+                group_by(
+                    .data$resolution,
+                    .data$spot,
+                    .data$cluster,
+                    .data$name
+                ) %>%
+                summarize(score = sum(.data$count)) %>%
                 ungroup()
         }
 
@@ -371,14 +377,14 @@ globalVariables(c(
 
     wideScores <-
         scores %>%
-        spread(name, score) %>%
+        spread(.data$name, .data$score) %>%
         as.data.frame() %>%
         column_to_rownames("spot")
 
     ggplot() +
         annotation +
         scatterpie::geom_scatterpie(
-            mapping = aes(x = x, y = y, r = r),
+            mapping = aes_string(x = "x", y = "y", r = "r"),
             data = cbind(wideScores[spots, ], coordinates[spots, ]),
             cols = colnames(wideScores),
             alpha = spotOpacity
@@ -416,38 +422,44 @@ globalVariables(c(
     transitionLabels = FALSE,
     transitionThreshold = 0.0
 ) {
-    if (!transitionProportions %in% c("From", "To")) {
-        stop(sprintf(
+    transitionSym <-
+        if (transitionProportions == "To") "toNode"
+        else if (transitionProportions == "From") "node"
+        else stop(sprintf(
             "Invalid value `transitionProportions`: %s",
             str(transitionProportions)
         ))
-    }
 
     data <-
         assignments %>%
-        mutate(resolution = as.numeric(resolution)) %>%
-        rename(node = name)
+        mutate(resolution = as.numeric(.data$resolution)) %>%
+        rename(node = .data$name)
 
     graph <- igraph::graph_from_data_frame(
         d = data %>%
-            mutate(toResolution = resolution + 1) %>%
+            mutate(toResolution = .data$resolution + 1) %>%
             (function(x) inner_join(
                 x,
-                x %>% select(everything(), toCluster = cluster, toNode = node),
+                x %>%
+                    select(
+                        everything(),
+                        toCluster = .data$cluster,
+                        toNode = .data$node
+                    ),
                 by = c("unit", "toResolution" = "resolution")
             )) %>%
-            group_by(node, toNode, cluster, toCluster) %>%
+            group_by(
+                .data$node,
+                .data$toNode,
+                .data$cluster,
+                .data$toCluster
+            ) %>%
             summarize(transCount = n()) %>%
-            (function(x) {
-                groupingVar <-
-                    if (transitionProportions == "To") quo(toNode)
-                    else quo(node)
-                group_by(x, !!groupingVar)
-            }) %>%
-            mutate(transProp = transCount / sum(transCount)) %>%
-            select(node, toNode, everything()),
+            group_by(!! sym(transitionSym)) %>%
+            mutate(transProp = .data$transCount / sum(.data$transCount)) %>%
+            select(.data$node, .data$toNode, everything()),
         vertices = data %>%
-            group_by(node, resolution, cluster) %>%
+            group_by(.data$node, .data$resolution, .data$cluster) %>%
             summarize(size = n())
     )
 
@@ -465,60 +477,64 @@ globalVariables(c(
         igraph::get.edge.attribute(graph)
     ) %>%
         as.data.frame(stringsAsFactors = FALSE) %>%
-        filter(transProp > transitionThreshold) %>%
+        filter(.data$transProp > transitionThreshold) %>%
         inner_join(
-            vertices %>% select(name, x, y),
+            vertices %>%
+                select(.data$name, .data$x, .data$y),
             by = c("from" = "name")
         ) %>%
         inner_join(
-            vertices %>% select(name, xend = x, yend = y),
+            vertices %>%
+                select(.data$name, xend = .data$x, yend = .data$y),
             by = c("to" = "name")
         )
 
     labels <-
         vertices %>%
-        select(resolution, x, y) %>%
-        filter(resolution != 1) %>%
-        mutate(ymin = min(y), ymax = max(y)) %>%
-        group_by(resolution) %>%
+        select(.data$resolution, .data$x, .data$y) %>%
+        filter(.data$resolution != 1) %>%
+        mutate(ymin = min(.data$y), ymax = max(.data$y)) %>%
+        group_by(.data$resolution) %>%
         summarize(
-            x = mean(x),
-            y = first(ymax) + 0.1 * (first(ymax) - first(ymin))
+            x = mean(.data$x),
+            y = first(.data$ymax) +
+                0.1 * (first(.data$ymax) - first(.data$ymin))
         ) %>%
-        mutate(label = sprintf("Resolution %s",
-                               levels(assignments$resolution)[resolution]))
+        mutate(label = sprintf(
+            "Resolution %s",
+            levels(assignments$resolution)[.data$resolution]
+        ))
 
     ggplot() +
         geom_segment(
-            aes(
-                x, y,
-                xend = xend, yend = yend,
-                alpha = transProp
+            aes_string(
+                "x", "y",
+                xend = "xend", yend = "yend",
+                alpha = "transProp"
             ),
             col = "black",
             data = edges
         ) +
         geom_point_interactive(
-            aes(
-                x, y,
-                data_id = levels(assignments$resolution)[resolution],
-                color = name,
-                size = size,
-                tooltip = sprintf("%s: %d", name, size)
+            aes_(
+                ~x, ~y,
+                data_id = ~levels(assignments$resolution)[.data$resolution],
+                color = ~name,
+                size = ~size,
+                tooltip = ~sprintf("%s: %d", name, size)
             ),
-            data = vertices %>% filter(resolution != 1)
+            data = vertices %>% filter(.data$resolution != 1)
         ) +
         {
             if (isTRUE(transitionLabels))
                 ggrepel::geom_label_repel(
-                    aes(
-                        x = (x + xend) / 2,
-                        y = (y + yend) / 2,
-                        color = as.factor(
-                            if (transitionProportions == "To") to
-                            else from
-                        ),
-                        label = round(transProp, 2)
+                    aes_(
+                        x = ~(x + xend) / 2,
+                        y = ~(y + yend) / 2,
+                        color =
+                            if (transitionProportions == "To") ~as.factor(to)
+                            else ~as.factor(from),
+                        label = ~round(transProp, 2)
                     ),
                     data = edges,
                     show.legend = FALSE
@@ -526,7 +542,7 @@ globalVariables(c(
             else NULL
         } +
         ggplot2::geom_text(
-            aes(x, y, label = label),
+            aes_string("x", "y", label = "label"),
             data = labels
         ) +
         labs(alpha = "Proportion", color = "Cluster") +
@@ -636,11 +652,12 @@ globalVariables(c(
                 r_ <- r
                 scores_ <-
                     scores %>%
-                    filter(resolution == r_)
+                    filter(.data$resolution == r_)
                 plotName <- sprintf("array_%s", r_)
                 assign(envir = parent.frame(), plotName, reactive(
                     .arrayPlot(
-                        scores = scores_ %>% select(spot, name, score),
+                        scores = scores_ %>%
+                            select(.data$spot, .data$name, .data$score),
                         coordinates = coordinates,
                         image =
                             if (!is.null(image) && !is.null(coordinates) &&
@@ -708,7 +725,7 @@ globalVariables(c(
         ## EXPORT
         outputs <- reactive({
             list(
-                clusters = assignments[, input$tree_selected],
+                clusters = assignments %>% select(-.data$name),
                 treePlot = treePlot(),
                 piePlots = lapply(
                     setNames(nm = input$tree_selected),
