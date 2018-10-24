@@ -187,14 +187,6 @@ The cluster assignments are labels assigned to each spot over different *cluster
 resolutions*, where we use the terminology "(cluster) resolution k" to refer to
 a partitioning of the spots into $k$ clusters.
 
-Any clustering algorithm can be used to compute the cluster assignments.
-For example, using `kmeans` to compute resolutions 2--5, we can write:
-
-```{r}
-assignments <- lapply(2:4, function(x) kmeans(t(counts), centers = x)$cluster)
-str(assignments)
-```
-
 Visualization
 -------------
 
@@ -203,7 +195,6 @@ We are now ready to use the gadget to visualize the data:
 ```{r}
 result <- runCPie(
     counts,
-    assignments,
     image = tissue,
     spotCoordinates = spots
 )
@@ -280,19 +271,17 @@ Therefore, it could be interesting to sub-cluster the spots assigned to these
 clusters:
 
 ```{r}
-subcluster <- names(result$clusters[, "4"][
-    which(result$clusters[, "4"] %in% c(1, 4))]
-)
+library(dplyr)
+subcluster <-
+    result$clusters %>%
+    filter(resolution == 4, cluster %in% c(1, 4)) %>%
+    `$`("unit")
 head(subcluster)
 ```
 
 ```{r}
 subclusterResult <- runCPie(
     counts = counts[, subcluster],
-    assignments = lapply(
-        2:4,
-        function(x) kmeans(t(counts[, subcluster]), centers = x)$cluster
-    ),
     image = tissue,
     spotCoordinates = spots
 )
