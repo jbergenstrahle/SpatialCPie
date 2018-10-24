@@ -4,7 +4,9 @@
 \alias{runCPie}
 \title{Run SpatialCPie}
 \usage{
-runCPie(counts, assignments, image = NULL, spotCoordinates = NULL,
+runCPie(counts, image = NULL, spotCoordinates = NULL,
+  margin = "spot", resolutions = 2:4,
+  assignmentFunction = function(x, k) kmeans(x, centers = k)$cluster,
   view = NULL)
 }
 \arguments{
@@ -12,14 +14,14 @@ runCPie(counts, assignments, image = NULL, spotCoordinates = NULL,
 \code{\link[SummarizedExperiment]{SummarizedExperiment-class}} object
 containing count values.}
 
-\item{assignments}{list of cluster assignments for each resolution.}
-
 \item{image}{image to be used as background to the plot.}
 
 \item{spotCoordinates}{\code{\link[base]{data.frame}} with pixel coordinates.
 The rows should correspond to the columns (spatial areas) in the count file.}
 
 \item{view}{\code{\link[shiny]{viewer}} object}
+
+\item{assignments}{list of cluster assignments for each resolution.}
 }
 \value{
 a list with the following items:

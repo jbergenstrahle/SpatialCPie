@@ -4,7 +4,7 @@
 \alias{.computeClusterColors}
 \title{Compute cluster colors}
 \usage{
-.computeClusterColors(assignments, counts)
+.computeClusterColors(clusterMeans)
 }
 \arguments{
 \item{assignments}{list of assignment vectors.}

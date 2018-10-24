@@ -1,5 +1,5 @@
 #' @importFrom dplyr
-#' filter group_by inner_join mutate n rename select summarize ungroup
+#' filter first group_by inner_join mutate n rename select summarize ungroup
 #' @importFrom ggiraph geom_point_interactive
 #' @importFrom ggplot2
 #' aes coord_fixed element_blank geom_segment ggplot ggtitle guides guide_legend
@@ -13,6 +13,7 @@
 #' %>% %||% accumulate array_branch lift invoke keep map map_dbl map_int partial
 #' reduce transpose
 #' @importFrom readr read_file write_file
+#' @importFrom rlang !! sym
 #' @importFrom shiny debounce observeEvent reactive
 #' @importFrom stats dist setNames
 #' @importFrom SummarizedExperiment assay
@@ -66,22 +67,6 @@ globalVariables(c(
 ) {
     score <- exp(-c * d)
     score / sum(score)
-}
-
-
-#' Pair-wise distances
-#'
-#' @param a (n, d) matrix of points
-#' @param b (m, d) matrix of points
-#' @param d distance function (with signature \[Num\] -> \[\[Num\]\] -> \[Num\])
-#' @return (m, n) matrix of distances
-#' @keywords internal
-.pairwiseDistance <- function(
-    a,
-    b,
-    d = function(x, ys) sqrt(colSums((t(ys) - x) ^ 2))
-) {
-    apply(a, 1, partial(d, ys = b))
 }
 
 
@@ -213,43 +198,6 @@ globalVariables(c(
 }
 
 
-#' Compute cluster distances
-#'
-#' Computes sample-centroid distances.
-#' @param assignments `data.frame` with columns `unit`, `resolution`, `cluster`.
-#' @param counts count matrix.
-#' @return list of sample-centroid distances for each resolution.
-#' @keywords internal
-.computeClusterDistances <- function(
-    assignments,
-    counts
-) {
-    longCounts <-
-        counts %>%
-        rownames_to_column("gene") %>%
-        gather(spot, count, -gene)
-
-    clusterCenters <-
-        assignments %>%
-        inner_join(longCounts, by = c("unit" = "spot")) %>%
-        unite("key", name, resolution, cluster) %>%
-        group_by(key, gene) %>%
-        summarize(mean = mean(count)) %>%
-        spread(key, mean) %>%
-        as.data.frame() %>%
-        column_to_rownames("gene")
-
-    clusterDistances <-
-        .pairwiseDistance(t(clusterCenters), t(counts)) %>%
-        as.data.frame() %>%
-        rownames_to_column("spot") %>%
-        gather(key, distance, -spot) %>%
-        separate(key, c("name", "resolution", "cluster"), sep = "_")
-
-    clusterDistances
-}
-
-
 #' Compute cluster colors
 #'
 #' Computes colors so that dissimilar clusters are far away in color space.
@@ -258,26 +206,10 @@ globalVariables(c(
 #' @return vector of cluster colors.
 #' @keywords internal
 .computeClusterColors <- function(
-    assignments,
-    counts
+    clusterMeans
 ) {
-
-    longCounts <-
-        counts %>%
-        rownames_to_column("gene") %>%
-        gather(unit, counts, -gene)
-
-    meanClusterExpr <-
-        assignments %>%
-        inner_join(longCounts, by = "unit") %>%
-        group_by(name, gene) %>%
-        summarize(mean = mean(counts)) %>%
-        spread(name, mean) %>%
-        as.data.frame() %>%
-        column_to_rownames("gene")
-
     clusterLoadings <- stats::prcomp(
-        t(meanClusterExpr),
+        t(clusterMeans),
         rank = 2,
         center = TRUE
     )$x
@@ -309,17 +241,25 @@ globalVariables(c(
 #' @keywords internal
 .preprocessData <- function(
     counts,
-    assignments,
-    coordinates = NULL
+    coordinates,
+    margin,
+    resolutions,
+    assignmentFunction
 ) {
-    ## Compute coordinates and intersect spots across resolutions
-    spots <-
-        assignments %>%
-        map(names) %>%
-        reduce(intersect)
+    spotNames <- c("spot", "sample")
+    geneNames <- c("gene", "feature")
+    c(margin, otherMargin) %<-% {
+        if (margin %in% spotNames) list("spot", "gene")
+        else if (margin %in% geneNames) list("gene", "spot")
+        else stop(sprintf("invalid margin '%s' (must be one of: %s)",
+                          margin,
+                          paste(c(spotNames, geneNames), collapse = ", ")))
+    }
 
+    spots <- colnames(counts)
     if (!is.null(coordinates)) {
         spots <- intersect(spots, rownames(coordinates))
+        counts <- counts[, spots]
     } else {
         c(xcoord, ycoord) %<-% {
             strsplit(spots, "x") %>%
@@ -330,23 +270,58 @@ globalVariables(c(
         rownames(coordinates) <- spots
     }
 
-    counts <- counts[, spots]
-    tidyAssignments <-
+    assignments <-
+        resolutions %>%
+        map(~assignmentFunction(
+            if (margin == "spot") t(counts) else counts,
+            .
+        )) %>%
+        setNames(resolutions) %>%
+        .tidyAssignments() %>%
+        rename(!! sym(margin) := unit)
+
+    longCounts <-
+        counts %>%
+        as.data.frame() %>%
+        rownames_to_column("gene") %>%
+        gather(spot, count, -gene)
+
+    clusterMeans <-
         assignments %>%
-        map(~.[spots]) %>%
-        .tidyAssignments()
+        inner_join(longCounts, by = margin) %>%
+        group_by(name, resolution, cluster, !! sym(otherMargin)) %>%
+        summarize(mean = mean(count)) %>%
+        ungroup()
+
+    colors <-
+        clusterMeans %>% select(name, !! sym(otherMargin), mean) %>%
+        spread(name, mean) %>%
+        as.data.frame() %>%
+        column_to_rownames(otherMargin) %>%
+        .computeClusterColors()
 
     scores <-
-        .computeClusterDistances(tidyAssignments, counts) %>%
-        group_by(name) %>%
-        mutate(score = .likeness(distance)) %>%
-        ungroup() %>%
-        select(-distance)
+        if (margin == "spot") {
+            longCounts %>%
+                inner_join(clusterMeans, by = "gene") %>%
+                group_by(resolution, spot, cluster, name) %>%
+                summarize(distance = sqrt(sum((count - mean) ^ 2))) %>%
+                group_by(resolution, spot) %>%
+                mutate(score = .likeness(distance)) %>%
+                ungroup() %>%
+                select(-distance)
+        } else {
+            assignments %>%
+                inner_join(longCounts, by = "gene") %>%
+                group_by(resolution, spot, cluster, name) %>%
+                summarize(score = sum(count)) %>%
+                ungroup()
+        }
 
     list(
-         assignments = tidyAssignments,
+         assignments = assignments %>% rename(unit = !! sym(margin)),
          scores = scores,
-         colors = .computeClusterColors(tidyAssignments, counts),
+         colors = colors,
          coordinates = coordinates
     )
 }
@@ -510,7 +485,8 @@ globalVariables(c(
             x = mean(x),
             y = first(ymax) + 0.1 * (first(ymax) - first(ymin))
         ) %>%
-        mutate(label = sprintf("Resolution %d", resolution))
+        mutate(label = sprintf("Resolution %s",
+                               levels(assignments$resolution)[resolution]))
 
     ggplot() +
         geom_segment(
@@ -525,7 +501,7 @@ globalVariables(c(
         geom_point_interactive(
             aes(
                 x, y,
-                data_id = as.factor(resolution),
+                data_id = levels(assignments$resolution)[resolution],
                 color = name,
                 size = size,
                 tooltip = sprintf("%s: %d", name, size)
@@ -831,23 +807,12 @@ globalVariables(c(
 
 #' SpatialCPie App
 #'
-#' @param counts gene count matrix.
-#' @param assignments cluster assignments.
 #' @param image background image.
-#' @param spotCoordinates spot pixel coordinates.
+#' @param ... arguments passed to \code{\link{.preprocessData}}
 #' @return SpatialCPie \code{\link[shiny]{shinyApp}} object
 #' @keywords internal
-.makeApp <- function(
-    counts,
-    assignments,
-    image = NULL,
-    spotCoordinates = NULL
-) {
-    data <- .preprocessData(
-        counts,
-        assignments,
-        spotCoordinates
-    )
+.makeApp <- function(image, ...) {
+    data <- .preprocessData(...)
     shiny::shinyApp(
         ui = .makeUI(!is.null(image)),
         server = .makeServer(
@@ -912,9 +877,11 @@ globalVariables(c(
 #' }
 runCPie <- function(
     counts,
-    assignments,
     image = NULL,
     spotCoordinates = NULL,
+    margin = "spot",
+    resolutions = 2:4,
+    assignmentFunction = function(x, k) kmeans(x, centers =  k)$cluster,
     view = NULL
 ) {
     if (is(counts, "SummarizedExperiment")) {
@@ -923,9 +890,11 @@ runCPie <- function(
     shiny::runGadget(
         app = .makeApp(
             counts = counts,
-            assignments = assignments,
             image = image,
-            spotCoordinates = spotCoordinates
+            coordinates = spotCoordinates,
+            margin = margin,
+            resolutions = resolutions,
+            assignmentFunction = assignmentFunction
         ),
         viewer = view %||% shiny::dialogViewer("SpatialCPie")
     )

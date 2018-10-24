@@ -4,14 +4,15 @@
 \alias{.preprocessData}
 \title{Preprocess data}
 \usage{
-.preprocessData(counts, assignments, coordinates = NULL)
+.preprocessData(counts, coordinates, margin, resolutions,
+  assignmentFunction)
 }
 \arguments{
 \item{counts}{count matrix.}
 
-\item{assignments}{list of assignment vectors.}
-
 \item{coordinates}{spot coordinates.}
+
+\item{assignments}{list of assignment vectors.}
 }
 \value{
 list with the following elements:
