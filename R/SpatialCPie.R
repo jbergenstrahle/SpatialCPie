@@ -76,8 +76,14 @@ globalVariables(c(
                 ## Zero-pad overlap matrix so that all labels are represented in
                 ## both the to and from dimensions
                 paddedOverlaps <- overlaps %>%
-                    rbind(do.call(rbind, rep(list(rep(0, n)), n - nrow(overlaps)))) %>%
-                    cbind(do.call(cbind, rep(list(rep(0, n)), n - ncol(overlaps))))
+                    rbind(do.call(
+                        rbind,
+                        rep(list(rep(0, n)), n - nrow(overlaps))
+                    )) %>%
+                    cbind(do.call(
+                        cbind,
+                        rep(list(rep(0, n)), n - ncol(overlaps))
+                    ))
                 rownames(paddedOverlaps)[rownames(paddedOverlaps) == ""] <-
                     setdiff(all, rownames(paddedOverlaps))
                 colnames(paddedOverlaps)[colnames(paddedOverlaps) == ""] <-
@@ -200,7 +206,8 @@ globalVariables(c(
 
     clusterColors <- cbind(
         50,
-        200 * t((t(clusterLoadings) - minLoading) / (maxLoading - minLoading)) - 100
+        200 * t((t(clusterLoadings) - minLoading) / (maxLoading - minLoading))
+        - 100
     )
 
     colorspace::LAB(clusterColors) %>%
@@ -235,9 +242,11 @@ globalVariables(c(
     c(margin, otherMargin) %<-% {
         if (margin %in% spotNames) list("spot", "gene")
         else if (margin %in% geneNames) list("gene", "spot")
-        else stop(sprintf("invalid margin '%s' (must be one of: %s)",
-                          margin,
-                          paste(c(spotNames, geneNames), collapse = ", ")))
+        else stop(sprintf(
+            "invalid margin '%s' (must be one of: %s)",
+            margin,
+            paste(c(spotNames, geneNames), collapse = ", ")
+        ))
     }
 
     spots <- colnames(counts)
@@ -326,10 +335,10 @@ globalVariables(c(
         }
 
     list(
-         assignments = assignments %>% rename(unit = !! sym(margin)),
-         scores = scores,
-         colors = colors,
-         coordinates = coordinates
+        assignments = assignments %>% rename(unit = !! sym(margin)),
+        scores = scores,
+        colors = colors,
+        coordinates = coordinates
     )
 }
 
@@ -616,9 +625,9 @@ globalVariables(c(
             plot <- ggiraph::girafe_options(
                 x = ggiraph::girafe(ggobj = treePlot()),
                 ggiraph::opts_hover(css = paste(
-                     "stroke:#888;",
-                     "stroke-width:0.2em;",
-                     "stroke-opacity:0.5;"
+                    "stroke:#888;",
+                    "stroke-width:0.2em;",
+                    "stroke-opacity:0.5;"
                 )),
                 ggiraph::opts_selection(css = paste(
                     "stroke:#000;",
