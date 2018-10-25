@@ -16,7 +16,7 @@
 #' @importFrom readr read_file write_file
 #' @importFrom rlang !! := .data sym
 #' @importFrom shiny debounce observeEvent reactive
-#' @importFrom stats dist setNames
+#' @importFrom stats dist kmeans setNames
 #' @importFrom SummarizedExperiment assay
 #' @importFrom tibble column_to_rownames rownames_to_column
 #' @importFrom tidyr gather separate spread unite
@@ -627,10 +627,12 @@ globalVariables(c(
 
             ## Copy selection from the previous tree
             if (length(input$tree_selected) > 0) {
-                session$onFlushed(function() isolate(session$sendCustomMessage(
-                    "tree_set",
-                    input$tree_selected
-                )))
+                session$onFlushed(function()
+                    shiny::isolate(session$sendCustomMessage(
+                        "tree_set",
+                        input$tree_selected
+                    )
+                ))
             }
 
             plot
