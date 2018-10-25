@@ -45,6 +45,9 @@ Usage example
 =============
 
 ```{r, include = FALSE}
+library(rlang)
+library(dplyr)
+
 # Patch SpatialCPie::runCPie so that it returns a mock output object instead of
 # starting the web server
 assignInNamespace(
@@ -52,45 +55,57 @@ assignInNamespace(
     x = "runCPie",
     value = function(
         counts,
-        assignments,
         image = NULL,
         spotCoordinates = NULL,
-        view = NULL
+        margin = "spot",
+        resolutions = 2:4,
+        assignmentFunction = function(x, k) kmeans(x, centers =  k)$cluster
     ) {
         data <- SpatialCPie:::.preprocessData(
             counts,
-            assignments,
-            spotCoordinates
-        )
-        likenessScores <- lapply(
-            tail(data$distances, -1),
-            function(x) SpatialCPie:::.likeness(x, 1.0)
+            coordinates = spotCoordinates,
+            margin = margin,
+            resolutions = resolutions,
+            assignmentFunction = assignmentFunction
         )
         arrayPlots <- lapply(
-            likenessScores,
-            function(x) SpatialCPie:::.arrayPlot(
-                scores = x, coordinates = data$coordinates,
-                image =
-                    if (!is.null(image) && !is.null(data$coordinates))
-                        grid::rasterGrob(
-                            image,
-                            width  = grid::unit(1, "npc"),
-                            height = grid::unit(1, "npc"),
-                            interpolate = TRUE
-                        )
-                    else NULL
-            ) +
-             ggplot2::scale_fill_manual(values = data$colors)
+            setNames(
+                nm = levels(data$scores$resolution) %>%
+                    purrr::keep(~ . > 1)
+            ),
+            function(r) {
+                scores <- data$scores %>% filter(.data$resolution == r)
+                p <- SpatialCPie:::.arrayPlot(
+                    scores = scores %>%
+                        select(.data$spot, .data$name, .data$score),
+                    coordinates = data$coordinates,
+                    image =
+                        if (!is.null(image) && !is.null(data$coordinates))
+                            grid::rasterGrob(
+                                image,
+                                width  = grid::unit(1, "npc"),
+                                height = grid::unit(1, "npc"),
+                                interpolate = TRUE
+                            )
+                        else NULL
+                ) +
+                    ggplot2::guides(
+                        fill = ggplot2::guide_legend(title = "Cluster")
+                    ) +
+                    ggplot2::scale_fill_manual(
+                        values = data$colors,
+                        labels = unique(scores$cluster)
+                    )
+            }
         )
         list(
-            clusters = do.call(cbind, data$assignments),
+            clusters = data$assignments %>% select(-.data$name),
             treePlot = SpatialCPie:::.clusterTree(
-                do.call(cbind, data$assignments),
+                data$assignments,
                 transitionLabels = TRUE
             ) +
-             ggplot2::scale_color_manual(values = data$colors),
-            piePlots = arrayPlots,
-            piePlotsInfo = likenessScores
+                ggplot2::scale_color_manual(values = data$colors),
+            piePlots = arrayPlots
         )
     }
 )
@@ -172,14 +187,6 @@ The cluster assignments are labels assigned to each spot over different *cluster
 resolutions*, where we use the terminology "(cluster) resolution k" to refer to
 a partitioning of the spots into $k$ clusters.
 
-Any clustering algorithm can be used to compute the cluster assignments.
-For example, using `kmeans` to compute resolutions 2--5, we can write:
-
-```{r}
-assignments <- lapply(2:4, function(x) kmeans(t(counts), centers = x)$cluster)
-str(assignments)
-```
-
 Visualization
 -------------
 
@@ -188,7 +195,6 @@ We are now ready to use the gadget to visualize the data:
 ```{r}
 result <- runCPie(
     counts,
-    assignments,
     image = tissue,
     spotCoordinates = spots
 )
@@ -265,19 +271,17 @@ Therefore, it could be interesting to sub-cluster the spots assigned to these
 clusters:
 
 ```{r}
-subcluster <- names(result$clusters[, "4"][
-    which(result$clusters[, "4"] %in% c(1, 4))]
-)
+library(dplyr)
+subcluster <-
+    result$clusters %>%
+    filter(resolution == 4, cluster %in% c(1, 4)) %>%
+    `$`("unit")
 head(subcluster)
 ```
 
 ```{r}
 subclusterResult <- runCPie(
     counts = counts[, subcluster],
-    assignments = lapply(
-        2:4,
-        function(x) kmeans(t(counts[, subcluster]), centers = x)$cluster
-    ),
     image = tissue,
     spotCoordinates = spots
 )

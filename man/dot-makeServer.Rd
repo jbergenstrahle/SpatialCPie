@@ -4,11 +4,13 @@
 \alias{.makeServer}
 \title{SpatialCPie server}
 \usage{
-.makeServer(distances, colors, image, coordinates)
+.makeServer(assignments, scores, colors, image, coordinates)
 }
 \arguments{
-\item{distances}{list of spot-cluster distance matrices, one for each
-resolution}
+\item{assignments}{\code{data.frame} with cluster assignments.}
+
+\item{scores}{\code{data.frame} with cluster scores for each spot in each
+resolution.}
 
 \item{colors}{vector of colors for each cluster label}
 

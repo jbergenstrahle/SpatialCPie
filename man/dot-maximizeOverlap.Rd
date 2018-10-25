@@ -4,13 +4,13 @@
 \alias{.maximizeOverlap}
 \title{Maximize overlap}
 \usage{
-.maximizeOverlap(xs)
+.maximizeOverlap(xss)
 }
 \arguments{
-\item{xs}{list of lists of labels}
+\item{xss}{list of lists of labels}
 }
 \value{
-\code{xs}, relabeled so as to maximize the overlap between labels in
+\code{xss}, relabeled so as to maximize the overlap between labels in
 consecutive label lists
 }
 \description{

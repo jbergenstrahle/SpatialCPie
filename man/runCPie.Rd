@@ -4,7 +4,9 @@
 \alias{runCPie}
 \title{Run SpatialCPie}
 \usage{
-runCPie(counts, assignments, image = NULL, spotCoordinates = NULL,
+runCPie(counts, image = NULL, spotCoordinates = NULL,
+  margin = "spot", resolutions = 2:4,
+  assignmentFunction = function(x, k) kmeans(x, centers = k)$cluster,
   view = NULL)
 }
 \arguments{
@@ -12,12 +14,16 @@ runCPie(counts, assignments, image = NULL, spotCoordinates = NULL,
 \code{\link[SummarizedExperiment]{SummarizedExperiment-class}} object
 containing count values.}
 
-\item{assignments}{list of cluster assignments for each resolution.}
-
 \item{image}{image to be used as background to the plot.}
 
 \item{spotCoordinates}{\code{\link[base]{data.frame}} with pixel coordinates.
 The rows should correspond to the columns (spatial areas) in the count file.}
+
+\item{margin}{which margin to cluster.}
+
+\item{resolutions}{the clustering resolutions.}
+
+\item{assignmentFunction}{function to compute cluster assignments.}
 
 \item{view}{\code{\link[shiny]{viewer}} object}
 }
@@ -27,8 +33,6 @@ a list with the following items:
 \item \code{"clusters"}: Cluster assignments (may differ from \code{assignments})
 \item \code{"treePlot"}: The cluster tree ggplot object
 \item \code{"piePots"}: The pie plot ggplot objects
-\item \code{"piePlotsInfo"}: Likeness scores between spots and clusters in each
-resolution
 }
 }
 \description{
@@ -58,11 +62,7 @@ if (interactive()) {
     )
     rownames(counts) <- paste("gene", 1:nrow(counts))
 
-    ## Perform clustering
-    assignments <- lapply(
-        2:5, function(x) kmeans(t(counts), centers = x)$cluster)
-
     ## Run SpatialCPie
-    runCPie(counts, assignments)
+    runCPie(counts)
 }
 }
