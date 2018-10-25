@@ -4,21 +4,25 @@
 \alias{.preprocessData}
 \title{Preprocess data}
 \usage{
-.preprocessData(counts, coordinates, margin, resolutions,
-  assignmentFunction)
+.preprocessData(counts, margin, resolutions, assignmentFunction,
+  coordinates = NULL)
 }
 \arguments{
 \item{counts}{count matrix.}
 
-\item{coordinates}{spot coordinates.}
+\item{margin}{which margin of the count matrix to cluster.}
 
-\item{assignments}{list of assignment vectors.}
+\item{resolutions}{vector of resolutions to cluster.}
+
+\item{assignmentFunction}{function to compute cluster assignments.}
+
+\item{coordinates}{optional \code{data.frame} with coordinates for each spot.}
 }
 \value{
 list with the following elements:
 \itemize{
 \item \code{$assignments}: tidy assignments
-\item \code{$distances}: sample-centroid distances
+\item \code{$scores}: cluster scores for each spot in each resolution
 \item \code{$colors}: cluster colors
 \item \code{$coordinates}: spot coordinates, either from \code{coordinates} or parsed from
 \code{assignments}

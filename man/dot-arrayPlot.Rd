@@ -8,7 +8,7 @@
   spotOpacity = 1)
 }
 \arguments{
-\item{scores}{(n, K) scoring matrix}
+\item{scores}{\code{data.frame} with cluster scores for each spot.}
 
 \item{coordinates}{\code{\link[base]{data.frame}} with
 \code{rownames} matching those in \code{scores} and columns \code{x} and

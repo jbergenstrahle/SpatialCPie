@@ -124,10 +124,10 @@ globalVariables(c(
 #' Tidy assignments
 #'
 #' @param assignments list of assignment vectors.
-#' @return the `assignments`, sorted by resolution and relabeled so that (1) for
-#' each resolution `r`, labels are in `[1..r]` and (2) the overlap between
-#' consecutive assignment vectors is maximized. Additionally, an `r = 1`
-#' resolution is added if it does not already exist.
+#' @return a `data.frame` containing the `assignments`, with the data relabeled
+#' so that (1) for each resolution `r`, labels are in `[1..r]` and (2) the
+#' overlap between consecutive assignment vectors is maximized. Additionally, an
+#' `r = 1` resolution is added if it does not already exist.
 #' @keywords internal
 .tidyAssignments <- function(
     assignments
@@ -184,8 +184,7 @@ globalVariables(c(
 #' Compute cluster colors
 #'
 #' Computes colors so that dissimilar clusters are far away in color space.
-#' @param assignments list of assignment vectors.
-#' @param counts count matrix.
+#' @param clusterMeans `data.frame` with feature means for each cluster.
 #' @return vector of cluster colors.
 #' @keywords internal
 .computeClusterColors <- function(
@@ -212,22 +211,24 @@ globalVariables(c(
 #' Preprocess data
 #'
 #' Preprocesses input data for \code{\link{.makeServer}}.
-#' @param assignments list of assignment vectors.
 #' @param counts count matrix.
-#' @param coordinates spot coordinates.
+#' @param margin which margin of the count matrix to cluster.
+#' @param resolutions vector of resolutions to cluster.
+#' @param assignmentFunction function to compute cluster assignments.
+#' @param coordinates optional `data.frame` with coordinates for each spot.
 #' @return list with the following elements:
 #' - `$assignments`: tidy assignments
-#' - `$distances`: sample-centroid distances
+#' - `$scores`: cluster scores for each spot in each resolution
 #' - `$colors`: cluster colors
 #' - `$coordinates`: spot coordinates, either from `coordinates` or parsed from
 #' `assignments`
 #' @keywords internal
 .preprocessData <- function(
     counts,
-    coordinates,
     margin,
     resolutions,
-    assignmentFunction
+    assignmentFunction,
+    coordinates = NULL
 ) {
     spotNames <- c("spot", "sample")
     geneNames <- c("gene", "feature")
@@ -335,7 +336,7 @@ globalVariables(c(
 
 #' Array pie plot
 #'
-#' @param scores (n, K) scoring matrix
+#' @param scores `data.frame` with cluster scores for each spot.
 #' @param coordinates \code{\link[base]{data.frame}} with
 #' `rownames` matching those in `scores` and columns `x` and
 #' `y` specifying the plotting position of each observation
@@ -565,8 +566,9 @@ globalVariables(c(
 
 #' SpatialCPie server
 #'
-#' @param distances list of spot-cluster distance matrices, one for each
-#' resolution
+#' @param assignments `data.frame` with cluster assignments.
+#' @param scores `data.frame` with cluster scores for each spot in each
+#' resolution.
 #' @param colors vector of colors for each cluster label
 #' @param image background image for the array plots, passed to
 #' \code{\link[grid]{grid.raster}}
@@ -851,17 +853,17 @@ globalVariables(c(
 #' @param counts gene count matrix or a
 #' \code{\link[SummarizedExperiment]{SummarizedExperiment-class}} object
 #' containing count values.
-#' @param assignments list of cluster assignments for each resolution.
 #' @param image image to be used as background to the plot.
 #' @param spotCoordinates \code{\link[base]{data.frame}} with pixel coordinates.
 #' The rows should correspond to the columns (spatial areas) in the count file.
+#' @param margin which margin to cluster.
+#' @param resolutions the clustering resolutions.
+#' @param assignmentFunction function to compute cluster assignments.
 #' @param view \code{\link[shiny]{viewer}} object
 #' @return a list with the following items:
 #' - `"clusters"`: Cluster assignments (may differ from `assignments`)
 #' - `"treePlot"`: The cluster tree ggplot object
 #' - `"piePots"`: The pie plot ggplot objects
-#' - `"piePlotsInfo"`: Likeness scores between spots and clusters in each
-#' resolution
 #' @export
 #' @examples
 #' if (interactive()) {
@@ -887,12 +889,8 @@ globalVariables(c(
 #'     )
 #'     rownames(counts) <- paste("gene", 1:nrow(counts))
 #'
-#'     ## Perform clustering
-#'     assignments <- lapply(
-#'         2:5, function(x) kmeans(t(counts), centers = x)$cluster)
-#'
 #'     ## Run SpatialCPie
-#'     runCPie(counts, assignments)
+#'     runCPie(counts)
 #' }
 runCPie <- function(
     counts,

@@ -7,9 +7,7 @@
 .computeClusterColors(clusterMeans)
 }
 \arguments{
-\item{assignments}{list of assignment vectors.}
-
-\item{counts}{count matrix.}
+\item{clusterMeans}{\code{data.frame} with feature means for each cluster.}
 }
 \value{
 vector of cluster colors.
