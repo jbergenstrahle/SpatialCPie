@@ -20,12 +20,12 @@ colnames(counts) <- apply(
 )
 rownames(counts) <- paste("gene", 1:nrow(counts))
 
-## Perform clustering
-assignments <- lapply(
-    2:5, function(x) kmeans(t(counts), centers = x)$cluster)
-
 ## Create App
 SpatialCPie:::.makeApp(
     counts = counts,
-    assignments = assignments
+    image = NULL,
+    coordinates = NULL,
+    margin = "spot",
+    resolutions = 2:4,
+    assignmentFunction = function(x, k) kmeans(x, centers =  k)$cluster
 )
