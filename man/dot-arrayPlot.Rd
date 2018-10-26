@@ -4,8 +4,8 @@
 \alias{.arrayPlot}
 \title{Array pie plot}
 \usage{
-.arrayPlot(scores, coordinates, image = NULL, spotScale = 1,
-  spotOpacity = 1)
+.arrayPlot(scores, coordinates, image = NULL, scoreMultiplier = 1,
+  spotScale = 1, spotOpacity = 1)
 }
 \arguments{
 \item{scores}{\code{\link[base]{data.frame}} with cluster scores for each
@@ -17,6 +17,8 @@ position of each observation.}
 
 \item{image}{a \code{\link[grid]{grid.grob}} to use as background to the
 plots.}
+
+\item{scoreMultiplier}{log multiplication factor applied to the score vector.}
 
 \item{spotScale}{pie chart size.}
 

@@ -362,6 +362,7 @@ globalVariables(c(
 #' position of each observation.
 #' @param image a \code{\link[grid]{grid.grob}} to use as background to the
 #' plots.
+#' @param scoreMultiplier log multiplication factor applied to the score vector.
 #' @param spotScale pie chart size.
 #' @param spotOpacity pie chart opacity.
 #' @return \code{\link[ggplot2]{ggplot}} object of the pie plot.
