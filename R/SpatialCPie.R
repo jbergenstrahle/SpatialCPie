@@ -481,6 +481,7 @@ globalVariables(c(
             summarize(transCount = n()) %>%
             group_by(!! sym(transitionSym)) %>%
             mutate(transProp = .data$transCount / sum(.data$transCount)) %>%
+            filter(.data$transProp > transitionThreshold) %>%
             select(.data$node, .data$toNode, everything()),
         vertices = data %>%
             group_by(.data$node, .data$resolution, .data$cluster) %>%
@@ -501,7 +502,6 @@ globalVariables(c(
         igraph::get.edge.attribute(graph)
     ) %>%
         as.data.frame(stringsAsFactors = FALSE) %>%
-        filter(.data$transProp > transitionThreshold) %>%
         inner_join(
             vertices %>%
                 select(.data$name, .data$x, .data$y),
@@ -817,7 +817,7 @@ globalVariables(c(
                         shiny::numericInput(
                             "edgeThreshold",
                             "Min proportion:",
-                            max = 1, min = 0, value = 0.05, step = 0.01
+                            max = 0.50, min = 0.00, value = 0.05, step = 0.01
                         )
                     ),
                     shiny::mainPanel(style = "text-align: center",
