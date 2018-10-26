@@ -370,6 +370,7 @@ globalVariables(c(
     scores,
     coordinates,
     image = NULL,
+    scoreMultiplier = 1.0,
     spotScale = 1,
     spotOpacity = 1
 ) {
@@ -398,6 +399,7 @@ globalVariables(c(
 
     wideScores <-
         scores %>%
+        mutate(score = .data$score ^ scoreMultiplier) %>%
         spread(.data$name, .data$score) %>%
         as.data.frame() %>%
         column_to_rownames("spot")
@@ -621,6 +623,7 @@ globalVariables(c(
         edgeProportions <- reactive({ input$edgeProportions })
         edgeThreshold   <- reactive({ input$edgeThreshold   }) %>% debounce(500)
         edgeLabels      <- reactive({ input$edgeLabels      })
+        scoreMultiplier <- reactive({ input$scoreMultiplier }) %>% debounce(500)
         showImage       <- reactive({ input$showImage       })
         spotOpacity     <- reactive({ input$spotOpacity     }) %>% debounce(500)
         spotSize        <- reactive({ input$spotSize        }) %>% debounce(500)
@@ -698,6 +701,7 @@ globalVariables(c(
                                     interpolate = TRUE
                                 )
                             else NULL,
+                        scoreMultiplier = scoreMultiplier(),
                         spotScale = spotSize() / 5,
                         spotOpacity = spotOpacity() / 100
                     ) +
@@ -833,6 +837,11 @@ globalVariables(c(
                                 "HE image:", c("Show", "Hide")
                             )
                         else NULL,
+                        shiny::numericInput(
+                            "scoreMultiplier",
+                            "Score multiplier:",
+                            max = 10, min = 0.1, value = 1, step = 0.2
+                        ),
                         shiny::numericInput(
                             "spotOpacity",
                             "Opacity:",
