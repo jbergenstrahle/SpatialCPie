@@ -670,7 +670,7 @@ globalVariables(c(
 
         ## Set initial selection
         session$onFlushed(function() session$sendCustomMessage(
-            "tree_set", resolutions
+            "tree_set", as.character(resolutions)
         ))
 
         ###
