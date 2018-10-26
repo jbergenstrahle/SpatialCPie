@@ -8,21 +8,22 @@
   spotOpacity = 1)
 }
 \arguments{
-\item{scores}{\code{data.frame} with cluster scores for each spot.}
+\item{scores}{\code{\link[base]{data.frame}} with cluster scores for each
+spot containing the columns \code{"spot"}, \code{"name"}, and \code{"score"}.}
 
-\item{coordinates}{\code{\link[base]{data.frame}} with
-\code{rownames} matching those in \code{scores} and columns \code{x} and
-\code{y} specifying the plotting position of each observation}
+\item{coordinates}{\code{\link[base]{data.frame}} with \code{rownames} matching
+those in \code{scores} and columns \code{"x"} and \code{"y"} specifying the plotting
+position of each observation.}
 
 \item{image}{a \code{\link[grid]{grid.grob}} to use as background to the
-plots}
+plots.}
 
-\item{spotScale}{pie chart size}
+\item{spotScale}{pie chart size.}
 
-\item{spotOpacity}{pie chart opacity}
+\item{spotOpacity}{pie chart opacity.}
 }
 \value{
-\code{\link[ggplot2]{ggplot}} object of the pie plot
+\code{\link[ggplot2]{ggplot}} object of the pie plot.
 }
 \description{
 Array pie plot

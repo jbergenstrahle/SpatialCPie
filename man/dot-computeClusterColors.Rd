@@ -7,7 +7,8 @@
 .computeClusterColors(clusterMeans)
 }
 \arguments{
-\item{clusterMeans}{\code{data.frame} with feature means for each cluster.}
+\item{clusterMeans}{matrix of size \code{(n, K)} representing the \code{n} feature
+means for each of the \code{K} clusters.}
 }
 \value{
 vector of cluster colors.

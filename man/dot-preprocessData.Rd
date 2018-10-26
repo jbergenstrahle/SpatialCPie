@@ -8,15 +8,23 @@
   coordinates = NULL)
 }
 \arguments{
-\item{counts}{count matrix.}
+\item{counts}{count matrix. \code{rownames} should correspond to genes and
+\code{colnames} should correspond to spot coordinates.}
 
-\item{margin}{which margin of the count matrix to cluster.}
+\item{margin}{which margin of the count matrix to cluster. Valid values are
+\code{c("spot", "sample", "gene", "feature")}.}
 
 \item{resolutions}{vector of resolutions to cluster.}
 
-\item{assignmentFunction}{function to compute cluster assignments.}
+\item{assignmentFunction}{function to compute cluster assignments. The
+function should have the following signature: integer (number of clusters) ->
+(m, n) feature matrix -> m-length vector (cluster assignment of each data
+point).}
 
-\item{coordinates}{optional \code{data.frame} with coordinates for each spot.}
+\item{coordinates}{optional \code{\link[base]{data.frame}} with pixel
+coordinates for each spot. \code{rownames} should correspond to the \code{colnames} of
+\code{counts} and the columns \code{x} and \code{y} should specify the pixel coordinates of
+the spots.}
 }
 \value{
 list with the following elements:

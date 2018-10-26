@@ -8,8 +8,8 @@
   transitionLabels = FALSE, transitionThreshold = 0)
 }
 \arguments{
-\item{assignments}{\code{data.frame} with columns \code{"name"}, \code{"resolution"},
-\code{"cluster"}}
+\item{assignments}{\code{\link[base]{data.frame}} with columns \code{"name"},
+\code{"resolution"}, and \code{"cluster"}.}
 
 \item{transitionProportions}{how to compute the transition proportions.
 Possible values are:
@@ -20,13 +20,14 @@ cluster
 cluster
 }}
 
-\item{transitionLabels}{show edge labels}
+\item{transitionLabels}{\code{\link[base]{logical}} specifying whether to
+show edge labels.}
 
 \item{transitionThreshold}{hide edges with transition proportions below this
-threshold}
+threshold.}
 }
 \value{
-\code{\link[ggplot2]{ggplot}} object of the cluster tree
+\code{\link[ggplot2]{ggplot}} object of the cluster tree.
 }
 \description{
 Cluster tree

@@ -7,11 +7,11 @@
 .maximizeOverlap(xss)
 }
 \arguments{
-\item{xss}{list of lists of labels}
+\item{xss}{list of lists of labels.}
 }
 \value{
 \code{xss}, relabeled so as to maximize the overlap between labels in
-consecutive label lists
+consecutive label lists.
 }
 \description{
 Maximize overlap

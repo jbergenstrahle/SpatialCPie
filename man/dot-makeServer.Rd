@@ -7,23 +7,27 @@
 .makeServer(assignments, scores, colors, image, coordinates)
 }
 \arguments{
-\item{assignments}{\code{data.frame} with cluster assignments.}
+\item{assignments}{\code{\link[base]{data.frame}} with cluster assignments
+containing the columns \code{"unit"} (name of the observational unit; either a
+gene name or a spot name), \code{"resolution"}, \code{"cluster"}, and \code{"name"} (a
+unique identifier of the (resolution, cluster) pair).}
 
-\item{scores}{\code{data.frame} with cluster scores for each spot in each
-resolution.}
+\item{scores}{\code{\link[base]{data.frame}} with cluster scores for each
+spot in each resolution containing the columns \code{"spot"}, \code{"resolution"},
+\code{"cluster"}, \code{"name"}, and \code{"score"}.}
 
-\item{colors}{vector of colors for each cluster label}
+\item{colors}{vector of colors for each cluster. Names should match the
+\code{"name"} columns of the \code{assignments} and \code{scores}.}
 
 \item{image}{background image for the array plots, passed to
-\code{\link[grid]{grid.raster}}}
+\code{\link[grid]{grid.raster}}.}
 
-\item{coordinates}{\code{\link[base]{data.frame}} with
-\code{rownames} matching the \code{\link[base]{names}} in
-\code{scores} and columns \code{x} and \code{y} specifying the plotting position of each
-observation}
+\item{coordinates}{\code{\link[base]{data.frame}} with \code{rownames} matching
+the \code{\link[base]{names}} in \code{scores} and columns \code{"x"} and \code{"y"}
+specifying the plotting position of each observation.}
 }
 \value{
-server function, to be passed to \code{\link[shiny]{shinyApp}}
+server function, to be passed to \code{\link[shiny]{shinyApp}}.
 }
 \description{
 SpatialCPie server

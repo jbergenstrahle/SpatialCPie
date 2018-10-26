@@ -59,7 +59,7 @@ assignInNamespace(
         spotCoordinates = NULL,
         margin = "spot",
         resolutions = 2:4,
-        assignmentFunction = function(x, k) kmeans(x, centers =  k)$cluster
+        assignmentFunction = function(k, x) kmeans(x, centers =  k)$cluster
     ) {
         data <- SpatialCPie:::.preprocessData(
             counts,

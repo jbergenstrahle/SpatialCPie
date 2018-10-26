@@ -6,7 +6,7 @@
 \usage{
 runCPie(counts, image = NULL, spotCoordinates = NULL,
   margin = "spot", resolutions = 2:4,
-  assignmentFunction = function(x, k) kmeans(x, centers = k)$cluster,
+  assignmentFunction = function(k, x) kmeans(x, centers = k)$cluster,
   view = NULL)
 }
 \arguments{
@@ -21,11 +21,12 @@ The rows should correspond to the columns (spatial areas) in the count file.}
 
 \item{margin}{which margin to cluster.}
 
-\item{resolutions}{the clustering resolutions.}
+\item{resolutions}{\code{\link[base]{numeric}} vector specifying the
+clustering resolutions.}
 
 \item{assignmentFunction}{function to compute cluster assignments.}
 
-\item{view}{\code{\link[shiny]{viewer}} object}
+\item{view}{\code{\link[shiny]{viewer}} object.}
 }
 \value{
 a list with the following items:

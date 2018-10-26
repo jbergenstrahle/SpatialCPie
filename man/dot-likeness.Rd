@@ -7,12 +7,12 @@
 .likeness(d, c = 1)
 }
 \arguments{
-\item{d}{distance vector}
+\item{d}{distance vector.}
 
-\item{c}{log multiplier}
+\item{c}{log multiplier.}
 }
 \value{
-vector of scores
+vector of scores.
 }
 \description{
 Likeness score

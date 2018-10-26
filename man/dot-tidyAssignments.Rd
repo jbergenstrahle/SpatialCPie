@@ -10,10 +10,11 @@
 \item{assignments}{list of assignment vectors.}
 }
 \value{
-a \code{data.frame} containing the \code{assignments}, with the data relabeled
-so that (1) for each resolution \code{r}, labels are in \code{[1..r]} and (2) the
-overlap between consecutive assignment vectors is maximized. Additionally, an
-\code{r = 1} resolution is added if it does not already exist.
+a \code{\link[base]{data.frame}} containing the \code{assignments}, with
+the data relabeled so that (1) for each resolution \code{r}, labels are in
+\code{[1..r]} and (2) the overlap between consecutive assignment vectors is
+maximized. Additionally, an \code{r = 1} resolution is added if it does not
+already exist.
 }
 \description{
 Tidy assignments

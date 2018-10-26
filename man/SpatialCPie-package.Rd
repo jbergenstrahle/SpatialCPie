@@ -6,8 +6,14 @@
 \alias{SpatialCPie-package}
 \title{SpatialCPie: Cluster analysis of Spatial Transcriptomics data}
 \description{
-A shiny gadget that can be used for cluster analysis of Spatial
-    Transcriptomics data.
+SpatialCPie is an R package designed to facilitate cluster evaluation for
+    spatial transcriptomics data by providing intuitive visualizations that
+    display the relationships between clusters in order to guide the user during
+    cluster identification and other downstream applications.
+    The package is built around a shiny "gadget" to allow the exploration of the
+    data with multiple plots in parallel and an interactive UI. The user can
+    easily toggle between different cluster resolutions in order to choose the
+    most appropriate visual cues.
 }
 \author{
 \strong{Maintainer}: Joseph Bergenstraahle \email{joseph.bergenstrahle@gmail.com}

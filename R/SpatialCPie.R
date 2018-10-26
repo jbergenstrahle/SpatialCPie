@@ -40,9 +40,9 @@ globalVariables(c(
 
 #' Likeness score
 #'
-#' @param d distance vector
-#' @param c log multiplier
-#' @return vector of scores
+#' @param d distance vector.
+#' @param c log multiplier.
+#' @return vector of scores.
 #' @keywords internal
 .likeness <- function(
     d,
@@ -55,9 +55,9 @@ globalVariables(c(
 
 #' Maximize overlap
 #'
-#' @param xss list of lists of labels
+#' @param xss list of lists of labels.
 #' @return `xss`, relabeled so as to maximize the overlap between labels in
-#' consecutive label lists
+#' consecutive label lists.
 #' @keywords internal
 .maximizeOverlap <- function(
     xss
@@ -130,10 +130,11 @@ globalVariables(c(
 #' Tidy assignments
 #'
 #' @param assignments list of assignment vectors.
-#' @return a `data.frame` containing the `assignments`, with the data relabeled
-#' so that (1) for each resolution `r`, labels are in `[1..r]` and (2) the
-#' overlap between consecutive assignment vectors is maximized. Additionally, an
-#' `r = 1` resolution is added if it does not already exist.
+#' @return a \code{\link[base]{data.frame}} containing the `assignments`, with
+#' the data relabeled so that (1) for each resolution `r`, labels are in
+#' `[1..r]` and (2) the overlap between consecutive assignment vectors is
+#' maximized. Additionally, an `r = 1` resolution is added if it does not
+#' already exist.
 #' @keywords internal
 .tidyAssignments <- function(
     assignments
@@ -190,7 +191,8 @@ globalVariables(c(
 #' Compute cluster colors
 #'
 #' Computes colors so that dissimilar clusters are far away in color space.
-#' @param clusterMeans `data.frame` with feature means for each cluster.
+#' @param clusterMeans matrix of size `(n, K)` representing the `n` feature
+#' means for each of the `K` clusters.
 #' @return vector of cluster colors.
 #' @keywords internal
 .computeClusterColors <- function(
@@ -218,11 +220,19 @@ globalVariables(c(
 #' Preprocess data
 #'
 #' Preprocesses input data for \code{\link{.makeServer}}.
-#' @param counts count matrix.
-#' @param margin which margin of the count matrix to cluster.
+#' @param counts count matrix. `rownames` should correspond to genes and
+#' `colnames` should correspond to spot coordinates.
+#' @param margin which margin of the count matrix to cluster. Valid values are
+#' `c("spot", "sample", "gene", "feature")`.
 #' @param resolutions vector of resolutions to cluster.
-#' @param assignmentFunction function to compute cluster assignments.
-#' @param coordinates optional `data.frame` with coordinates for each spot.
+#' @param assignmentFunction function to compute cluster assignments. The
+#' function should have the following signature: integer (number of clusters) ->
+#' (m, n) feature matrix -> m-length vector (cluster assignment of each data
+#' point).
+#' @param coordinates optional \code{\link[base]{data.frame}} with pixel
+#' coordinates for each spot. `rownames` should correspond to the `colnames` of
+#' `counts` and the columns `x` and `y` should specify the pixel coordinates of
+#' the spots.
 #' @return list with the following elements:
 #' - `$assignments`: tidy assignments
 #' - `$scores`: cluster scores for each spot in each resolution
@@ -266,8 +276,8 @@ globalVariables(c(
     assignments <-
         resolutions %>%
         map(~assignmentFunction(
-            if (margin == "spot") t(counts) else counts,
-            .
+            .,
+            if (margin == "spot") t(counts) else counts
         )) %>%
         setNames(resolutions) %>%
         .tidyAssignments() %>%
@@ -345,15 +355,16 @@ globalVariables(c(
 
 #' Array pie plot
 #'
-#' @param scores `data.frame` with cluster scores for each spot.
-#' @param coordinates \code{\link[base]{data.frame}} with
-#' `rownames` matching those in `scores` and columns `x` and
-#' `y` specifying the plotting position of each observation
+#' @param scores \code{\link[base]{data.frame}} with cluster scores for each
+#' spot containing the columns `"spot"`, `"name"`, and `"score"`.
+#' @param coordinates \code{\link[base]{data.frame}} with `rownames` matching
+#' those in `scores` and columns `"x"` and `"y"` specifying the plotting
+#' position of each observation.
 #' @param image a \code{\link[grid]{grid.grob}} to use as background to the
-#' plots
-#' @param spotScale pie chart size
-#' @param spotOpacity pie chart opacity
-#' @return \code{\link[ggplot2]{ggplot}} object of the pie plot
+#' plots.
+#' @param spotScale pie chart size.
+#' @param spotOpacity pie chart opacity.
+#' @return \code{\link[ggplot2]{ggplot}} object of the pie plot.
 #' @keywords internal
 .arrayPlot <- function(
     scores,
@@ -413,18 +424,19 @@ globalVariables(c(
 
 #' Cluster tree
 #'
-#' @param assignments `data.frame` with columns `"name"`, `"resolution"`,
-#' `"cluster"`
+#' @param assignments \code{\link[base]{data.frame}} with columns `"name"`,
+#' `"resolution"`, and `"cluster"`.
 #' @param transitionProportions how to compute the transition proportions.
 #' Possible values are:
 #' - `"From"`: based on the total number of assignments in the lower-resolution
 #' cluster
 #' - `"To"`: based on the total number of assignments in the higher-resolution
 #' cluster
-#' @param transitionLabels show edge labels
+#' @param transitionLabels \code{\link[base]{logical}} specifying whether to
+#' show edge labels.
 #' @param transitionThreshold hide edges with transition proportions below this
-#' threshold
-#' @return \code{\link[ggplot2]{ggplot}} object of the cluster tree
+#' threshold.
+#' @return \code{\link[ggplot2]{ggplot}} object of the cluster tree.
 #' @keywords internal
 .clusterTree <- function(
     assignments,
@@ -575,17 +587,21 @@ globalVariables(c(
 
 #' SpatialCPie server
 #'
-#' @param assignments `data.frame` with cluster assignments.
-#' @param scores `data.frame` with cluster scores for each spot in each
-#' resolution.
-#' @param colors vector of colors for each cluster label
+#' @param assignments \code{\link[base]{data.frame}} with cluster assignments
+#' containing the columns `"unit"` (name of the observational unit; either a
+#' gene name or a spot name), `"resolution"`, `"cluster"`, and `"name"` (a
+#' unique identifier of the (resolution, cluster) pair).
+#' @param scores \code{\link[base]{data.frame}} with cluster scores for each
+#' spot in each resolution containing the columns `"spot"`, `"resolution"`,
+#' `"cluster"`, `"name"`, and `"score"`.
+#' @param colors vector of colors for each cluster. Names should match the
+#' `"name"` columns of the `assignments` and `scores`.
 #' @param image background image for the array plots, passed to
-#' \code{\link[grid]{grid.raster}}
-#' @param coordinates \code{\link[base]{data.frame}} with
-#' `rownames` matching the \code{\link[base]{names}} in
-#' `scores` and columns `x` and `y` specifying the plotting position of each
-#' observation
-#' @return server function, to be passed to \code{\link[shiny]{shinyApp}}
+#' \code{\link[grid]{grid.raster}}.
+#' @param coordinates \code{\link[base]{data.frame}} with `rownames` matching
+#' the \code{\link[base]{names}} in `scores` and columns `"x"` and `"y"`
+#' specifying the plotting position of each observation.
+#' @return server function, to be passed to \code{\link[shiny]{shinyApp}}.
 #' @keywords internal
 .makeServer <- function(
     assignments,
@@ -753,8 +769,9 @@ globalVariables(c(
 
 #' SpatialCPie UI
 #'
-#' @param imageButton show image radio buttons
-#' @return SpatialCPie UI, to be passed to \code{\link[shiny]{shinyApp}}
+#' @param imageButton \code{\link[base]{logical}} specifying if the UI should
+#' include a "show image" radio button.
+#' @return SpatialCPie UI, to be passed to \code{\link[shiny]{shinyApp}}.
 #' @keywords internal
 .makeUI <- function(
     imageButton = FALSE
@@ -838,8 +855,8 @@ globalVariables(c(
 #' SpatialCPie App
 #'
 #' @param image background image.
-#' @param ... arguments passed to \code{\link{.preprocessData}}
-#' @return SpatialCPie \code{\link[shiny]{shinyApp}} object
+#' @param ... arguments passed to \code{\link{.preprocessData}}.
+#' @return SpatialCPie \code{\link[shiny]{shinyApp}} object.
 #' @keywords internal
 .makeApp <- function(image, ...) {
     data <- .preprocessData(...)
@@ -866,9 +883,10 @@ globalVariables(c(
 #' @param spotCoordinates \code{\link[base]{data.frame}} with pixel coordinates.
 #' The rows should correspond to the columns (spatial areas) in the count file.
 #' @param margin which margin to cluster.
-#' @param resolutions the clustering resolutions.
+#' @param resolutions \code{\link[base]{numeric}} vector specifying the
+#' clustering resolutions.
 #' @param assignmentFunction function to compute cluster assignments.
-#' @param view \code{\link[shiny]{viewer}} object
+#' @param view \code{\link[shiny]{viewer}} object.
 #' @return a list with the following items:
 #' - `"clusters"`: Cluster assignments (may differ from `assignments`)
 #' - `"treePlot"`: The cluster tree ggplot object
@@ -907,7 +925,7 @@ runCPie <- function(
     spotCoordinates = NULL,
     margin = "spot",
     resolutions = 2:4,
-    assignmentFunction = function(x, k) kmeans(x, centers =  k)$cluster,
+    assignmentFunction = function(k, x) kmeans(x, centers =  k)$cluster,
     view = NULL
 ) {
     if (is(counts, "SummarizedExperiment")) {
