@@ -102,7 +102,8 @@ assignInNamespace(
             clusters = data$assignments %>% select(-.data$name),
             treePlot = SpatialCPie:::.clusterTree(
                 data$assignments,
-                transitionLabels = TRUE
+                transitionLabels = TRUE,
+                transitionThreshold = 0.05
             ) +
                 ggplot2::scale_color_manual(values = data$colors),
             piePlots = arrayPlots
@@ -288,8 +289,8 @@ subclusterResult <- runCPie(
 subclusterResult$treePlot
 ```
 
-From the array plots, the sub-clustering appears to pick up two different
-clusters of stromal cells.
+The cluster tree indicates that the sub-clustering appears to pick up two
+different clusters of stromal cells.
 However, the pie charts show that most spots have quite comparable likeness to
 each of the two clusters, which could indicate that this level of clustering is
 too fine-grained.
