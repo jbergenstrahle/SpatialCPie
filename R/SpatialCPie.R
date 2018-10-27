@@ -482,7 +482,19 @@ globalVariables(c(
             summarize(transCount = n()) %>%
             group_by(!! sym(transitionSym)) %>%
             mutate(transProp = .data$transCount / sum(.data$transCount)) %>%
-            filter(.data$transProp > transitionThreshold) %>%
+            ungroup() %>%
+
+            group_by(.data$toNode) %>%
+            filter(
+                .data$transProp == max(.data$transProp)
+                | .data$transProp > transitionThreshold
+            ) %>%
+            ungroup() %>%
+            # ^ filter edges with transition proportions (weights) below
+            #   threshold but always keep the incident edge with the highest
+            #   weight (since the graph would become disconnected if that edge
+            #   also were removed)
+
             select(.data$node, .data$toNode, everything()),
         vertices = data %>%
             group_by(.data$node, .data$resolution, .data$cluster) %>%
@@ -818,7 +830,7 @@ globalVariables(c(
                         shiny::numericInput(
                             "edgeThreshold",
                             "Min proportion:",
-                            max = 0.50, min = 0.00, value = 0.05, step = 0.01
+                            max = 1.00, min = 0.00, value = 0.05, step = 0.01
                         )
                     ),
                     shiny::mainPanel(style = "text-align: center",
