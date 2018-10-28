@@ -726,7 +726,7 @@ globalVariables(c(
                                     interpolate = TRUE
                                 )
                             else NULL,
-                        scoreMultiplier = scoreMultiplier(),
+                        scoreMultiplier = 2 ** scoreMultiplier(),
                         spotScale = spotSize() / 5,
                         spotOpacity = spotOpacity() / 100
                     ) +
@@ -864,8 +864,8 @@ globalVariables(c(
                         else NULL,
                         shiny::numericInput(
                             "scoreMultiplier",
-                            "Score multiplier:",
-                            max = 10, min = 0.1, value = 1, step = 0.2
+                            "Score log-multiplier:",
+                            max = 10, min = -10, value = 0, step = 0.1
                         ),
                         shiny::numericInput(
                             "spotOpacity",
