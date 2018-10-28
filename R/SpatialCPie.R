@@ -277,7 +277,12 @@ globalVariables(c(
         resolutions %>%
         map(~assignmentFunction(
             .,
-            if (margin == "spot") t(counts) else counts
+            if (margin == "spot") t(counts)
+            else {
+                log(as.matrix(counts) + 1) %>%
+                    t() %>%
+                    cov()
+            }
         )) %>%
         setNames(resolutions) %>%
         .tidyAssignments() %>%
@@ -332,15 +337,22 @@ globalVariables(c(
                 ungroup() %>%
                 select(-.data$distance)
         } else {
+            normalizedCounts <-
+                longCounts %>%
+                group_by(.data$spot) %>%
+                mutate(count = .data$count / sum(.data$count)) %>%
+                group_by(.data$gene) %>%
+                mutate(count = .data$count / sum(.data$count)) %>%
+                ungroup()
             assignments %>%
-                inner_join(longCounts, by = "gene") %>%
+                inner_join(normalizedCounts, by = "gene") %>%
                 group_by(
                     .data$resolution,
                     .data$spot,
                     .data$cluster,
                     .data$name
                 ) %>%
-                summarize(score = sum(.data$count)) %>%
+                summarize(score = mean(.data$count)) %>%
                 ungroup()
         }
 
