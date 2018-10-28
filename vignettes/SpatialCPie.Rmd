@@ -87,7 +87,8 @@ assignInNamespace(
                                 height = grid::unit(1, "npc"),
                                 interpolate = TRUE
                             )
-                        else NULL
+                        else NULL,
+                    scoreMultiplier = 10.0,
                 ) +
                     ggplot2::guides(
                         fill = ggplot2::guide_legend(title = "Cluster")

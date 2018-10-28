@@ -324,7 +324,7 @@ globalVariables(c(
                     .data$name
                 ) %>%
                 summarize(
-                    distance = sqrt(sum((.data$count - .data$mean) ^ 2))
+                    distance = sqrt(mean((.data$count - .data$mean) ^ 2))
                 ) %>%
                 ungroup() %>%
                 group_by(.data$resolution, .data$spot) %>%
