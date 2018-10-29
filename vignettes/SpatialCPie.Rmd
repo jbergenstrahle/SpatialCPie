@@ -252,8 +252,8 @@ L(s, k) = \mbox{exp}\left(
 $$
 
 where $x_i$ is the gene expression vector of spot $i$, $C(k)$ is the set of
-spots in cluster $k$, and $\lambda$ is a user-defined constant (adjustable from
-the gadget).
+spots in cluster $k$, and $\lambda$ is a user-defined constant, the **score
+multiplier** (adjustable from the gadget).
 
 Note that the definition implies that it is possible to (practically) hard-label
 the spots by setting $\lambda$ to a high value.
@@ -291,12 +291,15 @@ subclusterResult <- runCPie(
 subclusterResult$treePlot
 ```
 
-The cluster tree indicates that the sub-clustering appears to pick up two
-different clusters of stromal cells.
-However, the pie charts show that most spots have quite comparable likeness to
-each of the two clusters, which could indicate that this level of clustering is
-too fine-grained.
+The cluster tree indicates that we appear to pick up three different clusters of
+stromal cells:
+In resolution 4, clusters 2 and 3 are mostly derived from the same parent
+cluster and their colors indicate that their expression profiles are similar.
+In contrast, there is still a clear separation between the clusters in
+resolution 3.
+Staking out the spatial and transcriptional differences between these three
+clusters appears to be a good basis for further analysis.
 
 ```{r}
-subclusterResult$piePlots$`2`
+subclusterResult$piePlots$`3`
 ```
