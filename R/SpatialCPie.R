@@ -660,12 +660,12 @@ globalVariables(c(
         ###
         ## INPUTS
         edgeProportions <- reactive({ input$edgeProportions })
-        edgeThreshold   <- reactive({ input$edgeThreshold   }) %>% debounce(500)
+        edgeThreshold   <- reactive({ input$edgeThreshold   }) %>% debounce(1000)
         edgeLabels      <- reactive({ input$edgeLabels      })
-        scoreMultiplier <- reactive({ input$scoreMultiplier }) %>% debounce(500)
+        scoreMultiplier <- reactive({ input$scoreMultiplier }) %>% debounce(1000)
         showImage       <- reactive({ input$showImage       })
-        spotOpacity     <- reactive({ input$spotOpacity     }) %>% debounce(500)
-        spotSize        <- reactive({ input$spotSize        }) %>% debounce(500)
+        spotOpacity     <- reactive({ input$spotOpacity     }) %>% debounce(1000)
+        spotSize        <- reactive({ input$spotSize        }) %>% debounce(1000)
 
         ###
         ## CLUSTER TREE
