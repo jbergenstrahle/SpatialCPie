@@ -16,7 +16,7 @@
 #' @importFrom readr read_file write_file
 #' @importFrom rlang !! := .data sym
 #' @importFrom shiny debounce observeEvent reactive
-#' @importFrom stats dist kmeans setNames
+#' @importFrom stats dist kmeans setNames sd
 #' @importFrom SummarizedExperiment assay
 #' @importFrom tibble column_to_rownames rownames_to_column
 #' @importFrom tidyr gather separate spread unite
@@ -50,6 +50,18 @@ globalVariables(c(
 ) {
     score <- exp(-c * d)
     score / sum(score)
+}
+
+#' Z-score
+#'
+#' @param xs vector of observations
+#' @return `xs`, z-normalized. if all elements of `xs` are equal, a vector of
+#'     zeros will be returned instead.
+#' @keywords internal
+.zscore <- function(xs) {
+    std <- sd(xs)
+    std <- if (std == 0.0) 1 else std
+    (xs - mean(xs)) / std
 }
 
 
@@ -280,8 +292,9 @@ globalVariables(c(
             if (margin == "spot") t(counts)
             else {
                 log(as.matrix(counts) + 1) %>%
-                    t() %>%
-                    cov()
+                    prop.table(margin = 2) %>%
+                    apply(1, .zscore) %>%
+                    t()
             }
         )) %>%
         setNames(resolutions) %>%
