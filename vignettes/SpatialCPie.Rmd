@@ -211,8 +211,8 @@ The information contained in these plots will be discussed in the following
 sections.
 
 To exit the gadget, press the "Done" button.
-The plots in the gadget, the cluster assignments, and the likeness scores are
-stored in the output object, which has the following structure:
+The plots in the gadget and the cluster assignments are stored in the output
+object, which has the following structure:
 
 ```{r}
 str(result, max.level = 1)
@@ -241,22 +241,52 @@ result$piePlots$`4`
 ```
 
 The spatial array plots show the spatial locations of the clusters.
-The pie diagrams are based on a **likeness score** between each spot and each
-cluster.
-The likeness score, $L$, between spot $s$ and cluster $k$ is defined as:
+The pie chart proportions are based on the following scoring scheme.
+
+#### Spot-based clustering
+
+In the case of spot-based clustering (`margin = "spot"` in the call to
+`runCPie`, which is the default), the score for cluster $k$ in spot $s$ is
+computed as:
 
 $$
-L(s, k) = \mbox{exp}\left(
-    -\lambda ||x_s - \mbox{mean}({\{x_{s'}\}_{s' \in C(k)}})||_2
+\mbox{score}(s, k) = \mbox{exp}\left(
+    - \mbox{RMSD}\left(x_s, \mbox{mean}({\{x_{s'}\}_{s' \in C(k)}})\right)
 \right),
 $$
 
 where $x_i$ is the gene expression vector of spot $i$, $C(k)$ is the set of
-spots in cluster $k$, and $\lambda$ is a user-defined constant, the **score
-multiplier** (adjustable from the gadget).
+spots in cluster $k$, and $\mbox{RMSD}(a, b)$ is the root-mean-square deviation
+between gene vectors $a$ and $b$.
+
+#### Gene-based clustering
+
+In the case of gene-based clustering (`margin = "gene"` in the call to
+`runCPie`), the score is computed as:
+
+$$
+\mbox{score}(s, k) = \mbox{mean}\left(
+    {\{\tilde{x}_{sg}\}_{g \in C(k)}}
+\right),
+$$
+
+where $\tilde{x}_{sg}$ is a log-normalized relative count value for gene $g$ in
+spot $s$.
+
+#### The score multiplier
+
+The score can be tuned by a *score multiplier*, $\lambda$, to either enhance or
+decrease the contrast between clusters.
+The final (visualized) score is an exponentiation of $\mbox{score}$:
+
+$$
+\mbox{score'}(s, k) = \mbox{score}(s, k) ^ \lambda
+$$
 
 Note that the definition implies that it is possible to (practically) hard-label
 the spots by setting $\lambda$ to a high value.
+This follows since the relative score for the highest scoring cluster will tend
+towards $1$ as $\lambda\to\infty$.
 
 Sub-clustering
 --------------
