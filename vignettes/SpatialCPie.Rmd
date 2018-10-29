@@ -184,11 +184,10 @@ repeat {
 Computing cluster assignments
 -----------------------------
 
-Apart from the count data, the primary input to the gadget is a list of *cluster
-assignments*.
-The cluster assignments are labels assigned to each spot over different *cluster
-resolutions*, where we use the terminology "(cluster) resolution k" to refer to
+The cluster assignments will be calculated during the loading of the gadget. The cluster assignments are labels assigned to each spot over different *cluster resolutions*, where we use the terminology "(cluster) resolution k" to refer to
 a partitioning of the spots into $k$ clusters.
+
+By default, clustering is performed with `base::kmeans` function at resolution 2:4. The user can specify the number of cluster resolutions with the `resolution` argument. The algorithm for clustering can also be specified with the `assignmentFunction` argument. Use `?runCPie` for a complete list of function options.
 
 Visualization
 -------------
@@ -203,12 +202,8 @@ result <- runCPie(
 )
 ```
 
-The gadget has two main elements: the **cluster tree** and the **spatial array
-plots**.
-The cluster tree is interactive and by selecting rows of nodes, the
-corresponding spatial array plots are also displayed.
-The information contained in these plots will be discussed in the following
-sections.
+This opens up the gadget window, which has two main elements: the **cluster tree** and the **spatial array plots**.
+The cluster tree is interactive and by selecting rows of nodes, the corresponding spatial array plots are also displayed. These can be viewed by scrolling down. The information contained in these plots will be discussed in the next section. There are a number of parameters that can be changed within the gadget which affects the visual representation.
 
 To exit the gadget, press the "Done" button.
 The plots in the gadget and the cluster assignments are stored in the output
