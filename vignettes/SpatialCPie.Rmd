@@ -89,6 +89,7 @@ assignInNamespace(
                             )
                         else NULL,
                     scoreMultiplier = 10.0,
+                    spotOpacity = if (is.null(image)) 1.0 else 0.7
                 ) +
                     ggplot2::guides(
                         fill = ggplot2::guide_legend(title = "Cluster")

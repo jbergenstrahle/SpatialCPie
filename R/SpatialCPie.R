@@ -890,7 +890,10 @@ globalVariables(c(
                         shiny::numericInput(
                             "spotOpacity",
                             "Opacity:",
-                            max = 100, min = 1, value = 100, step = 10
+                            max = 100,
+                            min = 1,
+                            value = if (imageButton) 70 else 100,
+                            step = 10
                         ),
                         shiny::numericInput(
                             "spotSize",
