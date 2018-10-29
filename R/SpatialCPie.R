@@ -885,7 +885,7 @@ globalVariables(c(
                         shiny::numericInput(
                             "scoreMultiplier",
                             "Score log-multiplier:",
-                            max = 10, min = -10, value = 0, step = 0.1
+                            max = 10, min = -10, value = 5, step = 0.1
                         ),
                         shiny::numericInput(
                             "spotOpacity",
