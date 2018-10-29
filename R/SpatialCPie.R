@@ -352,6 +352,7 @@ globalVariables(c(
         } else {
             normalizedCounts <-
                 longCounts %>%
+                mutate(count = log(.data$count + 1)) %>%
                 group_by(.data$spot) %>%
                 mutate(count = .data$count / sum(.data$count)) %>%
                 group_by(.data$gene) %>%
