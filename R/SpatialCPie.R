@@ -370,9 +370,15 @@ globalVariables(c(
                 ungroup()
         }
 
+    normalizedScores <-
+        scores %>%
+        group_by(.data$resolution, .data$spot) %>%
+        mutate(score = .data$score / sum(.data$score)) %>%
+        ungroup()
+
     list(
         assignments = assignments %>% rename(unit = !! sym(margin)),
-        scores = scores,
+        scores = normalizedScores,
         colors = colors,
         coordinates = coordinates
     )
