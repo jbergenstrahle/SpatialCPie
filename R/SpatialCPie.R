@@ -417,9 +417,9 @@ globalVariables(c(
     c(ymax, xmax) %<-% { c(ymax, xmax) %>% map(~. + 3 * r) }
 
     if (!is.null(image)) {
-        ymin <- max(ymin, 0)
+        ymin <- max(ymin, 1)
         ymax <- min(ymax, nrow(image$raster))
-        xmin <- max(xmin, 0)
+        xmin <- max(xmin, 1)
         xmax <- min(xmax, ncol(image$raster))
 
         image$raster <- image$raster[ymin:ymax, xmin:xmax]
