@@ -22,7 +22,7 @@ biocViews:
     RNASeq,
     Software
 Depends:
-    R (>= 3.6)
+    R (>= 3.5.1)
 Imports:
     colorspace (>= 1.3-2),
     dplyr (>= 0.7.6),
