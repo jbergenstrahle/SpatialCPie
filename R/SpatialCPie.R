@@ -190,7 +190,8 @@ globalVariables(c(
             data.frame(
                 name = sprintf("resolution %s, cluster %s", res, xs),
                 resolution = res,
-                cluster = xs
+                cluster = xs,
+                stringsAsFactors = TRUE
             ) %>%
             tibble::rownames_to_column("unit")
         )) %>%
