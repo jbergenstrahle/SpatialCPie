@@ -87,7 +87,8 @@ globalVariables(c(
 
                 ## Zero-pad overlap matrix so that all labels are represented in
                 ## both the to and from dimensions
-                paddedOverlaps <- overlaps %>%
+                paddedOverlaps <-
+                    overlaps %>%
                     rbind(do.call(
                         rbind,
                         rep(list(rep(0, n)), n - nrow(overlaps))
