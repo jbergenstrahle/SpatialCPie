@@ -1,6 +1,6 @@
 Package: SpatialCPie
 Title: Cluster analysis of Spatial Transcriptomics data
-Version: 0.99.99.2
+Version: 0.99.99.4
 Authors@R:
     person(
         "Joseph", "Bergenstraahle",
