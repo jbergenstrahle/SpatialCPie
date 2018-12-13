@@ -33,6 +33,12 @@ knitr::opts_chunk$set(
 )
 ```
 
+Notice to users using OSX with R-devel
+============
+
+SpatialCPie depends on the ggiraph package, for which their is no r-devel version available at the moment. 
+This means that SpatialCPie will not work on OSX with R-devel. 
+
 Introduction
 ============
 
