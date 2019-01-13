@@ -8,7 +8,7 @@ cluster identification, selection and further downstream applications.
 Installation
 ------------
 Using `devtools`, execute the following from the R console:
-```
+```r
 devtools::install_github(
     "jbergenstrahle/SpatialCPie"
    ,build_opts=c("--no-resave-data", "--no-manual")
@@ -25,6 +25,6 @@ https://bioconductor.org/packages/devel/bioc/html/SpatialCPie.html
 Usage
 -----
 See the vignette:
-```
+```r
 vignette("SpatialCPie", package="SpatialCPie")
 ```
