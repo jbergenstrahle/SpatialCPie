@@ -9,7 +9,10 @@ Installation
 ------------
 Using `devtools`, execute the following from the R console:
 ```
-devtools::install_github("jbergenstrahle/SpatialCPie")
+devtools::install_github(
+    "jbergenstrahle/SpatialCPie"
+   ,build_opts=c("--no-resave-data", "--no-manual")
+)
 ```
 
 Bioconductor version
@@ -23,5 +26,5 @@ Usage
 -----
 See the vignette:
 ```
-devtools::browseVignettes("SpatialCPie")
+vignette("SpatialCPie", package="SpatialCPie")
 ```
