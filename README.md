@@ -12,6 +12,13 @@ Using `devtools`, execute the following from the R console:
 devtools::install_github("jbergenstrahle/SpatialCPie")
 ```
 
+Bioconductor version
+--------------------
+SpatialCPie is currently on the developmental version of Bioconductor (3.9):
+```
+https://bioconductor.org/packages/devel/bioc/html/SpatialCPie.html
+```
+
 Usage
 -----
 See the vignette:
