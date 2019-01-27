@@ -18,9 +18,7 @@ devtools::install_github(
 Bioconductor version
 --------------------
 SpatialCPie is currently on the developmental version of Bioconductor (3.9):
-```
 https://bioconductor.org/packages/devel/bioc/html/SpatialCPie.html
-```
 
 Usage
 -----
