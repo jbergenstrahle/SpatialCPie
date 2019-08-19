@@ -4,13 +4,17 @@
 \alias{.makeServer}
 \title{SpatialCPie server}
 \usage{
-.makeServer(assignments, scores, colors, image, coordinates)
+.makeServer(assignments, clusterMeans, scores, colors, image, coordinates,
+  featureName)
 }
 \arguments{
 \item{assignments}{\code{\link[base]{data.frame}} with cluster assignments
 containing the columns \code{"unit"} (name of the observational unit; either a
 gene name or a spot name), \code{"resolution"}, \code{"cluster"}, and \code{"name"} (a
 unique identifier of the (resolution, cluster) pair).}
+
+\item{clusterMeans}{\code{\link[base]{data.frame}} with columns \code{"name"},
+\code{"resolution"}, \code{"cluster"}, \code{featureName}, and \code{"mean"}.}
 
 \item{scores}{\code{\link[base]{data.frame}} with cluster scores for each
 spot in each resolution containing the columns \code{"spot"}, \code{"resolution"},
@@ -25,6 +29,9 @@ spot in each resolution containing the columns \code{"spot"}, \code{"resolution"
 \item{coordinates}{\code{\link[base]{data.frame}} with \code{rownames} matching
 the \code{\link[base]{names}} in \code{scores} and columns \code{"x"} and \code{"y"}
 specifying the plotting position of each observation.}
+
+\item{featureName}{\code{\link[base]{character}} with the name of the
+clustered feature.}
 }
 \value{
 server function, to be passed to \code{\link[shiny]{shinyApp}}.

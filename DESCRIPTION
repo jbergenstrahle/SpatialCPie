@@ -1,6 +1,6 @@
 Package: SpatialCPie
 Title: Cluster analysis of Spatial Transcriptomics data
-Version: 1.1.0
+Version: 1.1.1
 Authors@R:
     person(
         "Joseph", "Bergenstraahle",
@@ -39,11 +39,12 @@ Imports:
     rlang (>= 0.2.2),
     scatterpie (>= 0.1.2),
     shiny (>= 1.1.0),
-    stats (>= 3.5.0),
+    stats (>= 3.6.0),
     SummarizedExperiment (>= 1.10.1),
     tibble (>= 1.4.2),
     tidyr (>= 0.8.1),
     tidyselect (>= 0.2.4),
+    tools (>= 3.6.0),
     utils (>= 3.5.0),
     zeallot (>= 0.1.0)
 Suggests:
@@ -56,5 +57,5 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 6.1.0
+RoxygenNote: 6.1.1
 VignetteBuilder: knitr

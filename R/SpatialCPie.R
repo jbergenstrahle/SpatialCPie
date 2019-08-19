@@ -1,5 +1,6 @@
 #' @importFrom dplyr
-#' filter first group_by inner_join mutate n rename select summarize ungroup
+#' arrange filter first group_by inner_join mutate n rename select summarize
+#' ungroup
 #' @importFrom ggiraph geom_point_interactive
 #' @importFrom ggplot2
 #' aes_ aes_string coord_fixed element_blank geom_segment ggplot ggtitle guides
@@ -21,6 +22,7 @@
 #' @importFrom tibble column_to_rownames rownames_to_column
 #' @importFrom tidyr gather separate spread unite
 #' @importFrom tidyselect everything quo
+#' @importFrom tools toTitleCase
 #' @importFrom utils head tail
 #' @importFrom utils str
 #' @importFrom zeallot %<-%
@@ -249,10 +251,12 @@ globalVariables(c(
 #' the spots.
 #' @return list with the following elements:
 #' - `$assignments`: tidy assignments
+#' - `$means`: cluster means
 #' - `$scores`: cluster scores for each spot in each resolution
 #' - `$colors`: cluster colors
 #' - `$coordinates`: spot coordinates, either from `coordinates` or parsed from
 #' `assignments`
+#' - `$featureName`: name of the clustered feature (the "opposite" of `margin`)
 #' @keywords internal
 .preprocessData <- function(
     counts,
@@ -380,9 +384,11 @@ globalVariables(c(
 
     list(
         assignments = assignments %>% rename(unit = !! sym(margin)),
+        means = clusterMeans,
         scores = normalizedScores,
         colors = colors,
-        coordinates = coordinates
+        coordinates = coordinates,
+        featureName = otherMargin
     )
 }
 
@@ -463,6 +469,10 @@ globalVariables(c(
 #'
 #' @param assignments \code{\link[base]{data.frame}} with columns `"name"`,
 #' `"resolution"`, and `"cluster"`.
+#' @param clusterMeans \code{\link[base]{data.frame}} with columns `"name"`,
+#' `"resolution"`, `"cluster"`, `featureName`, and `"mean"`.
+#' @param featureName \code{\link[base]{character}} with the name of the
+#' clustered feature.
 #' @param transitionProportions how to compute the transition proportions.
 #' Possible values are:
 #' - `"From"`: based on the total number of assignments in the lower-resolution
@@ -473,13 +483,18 @@ globalVariables(c(
 #' show edge labels.
 #' @param transitionThreshold hide edges with transition proportions below this
 #' threshold.
+#' @param numTopFeatures \code{\link[base]{integer}} specifying the number of
+#' features to show in the hover tooltips.
 #' @return \code{\link[ggplot2]{ggplot}} object of the cluster tree.
 #' @keywords internal
 .clusterTree <- function(
     assignments,
+    clusterMeans,
+    featureName,
     transitionProportions = "To",
     transitionLabels = FALSE,
-    transitionThreshold = 0.0
+    transitionThreshold = 0.0,
+    numTopFeatures = 10
 ) {
     transitionSym <-
         if (transitionProportions == "To") "toNode"
@@ -560,7 +575,7 @@ globalVariables(c(
             by = c("to" = "name")
         )
 
-    labels <-
+    resolutionLabels <-
         vertices %>%
         select(.data$resolution, .data$x, .data$y) %>%
         filter(.data$resolution != 1) %>%
@@ -576,6 +591,48 @@ globalVariables(c(
             levels(assignments$resolution)[.data$resolution]
         ))
 
+    tooltips <-
+        clusterMeans %>%
+        mutate(name = as.character(.data$name)) %>%
+        group_by(.data$name) %>%
+        mutate(rank = rank(-.data$mean, ties.method = "first")) %>%
+        filter(.data$rank <= numTopFeatures) %>%
+        arrange(-.data$mean) %>%
+        summarize(tooltip = invoke(
+            paste,
+            sprintf(
+                paste0(
+                    "<svg width=\"20em\" height=\"1.5em\">",
+                        paste0(
+                            "<rect width=\"%f%%\" height=\"1.5em\" ",
+                            "style=\"fill:rgb(125,125,125)\"></rect>"
+                        ),
+                        paste0(
+                            "<text x=\"2%%\" y=\"50%%\" fill=\"black\"",
+                            "dominant-baseline=\"central\">%s</text>"
+                        ),
+                        paste0(
+                            "<text x=\"%f%%\" y=\"50%%\" fill=\"white\"",
+                            "dominant-baseline=\"central\" >%.2f</text>"
+                        ),
+                    "</svg>"
+                ),
+                70 * mean / max(mean),
+                !! sym(featureName),
+                70 * mean / max(mean) + 2,
+                mean
+            ),
+            sep="\n"
+        ))
+    vertices <-
+        vertices %>%
+        inner_join(tooltips, by = "name") %>%
+        mutate(tooltip = paste(sep = "<br />",
+            toTitleCase(.data$name),
+            sprintf("Size: %d", .data$size),
+            .data$tooltip
+        ))
+
     ggplot() +
         geom_segment(
             aes_string(
@@ -589,10 +646,9 @@ globalVariables(c(
         geom_point_interactive(
             aes_(
                 ~x, ~y,
-                data_id = ~levels(assignments$resolution)[.data$resolution],
                 color = ~name,
                 size = ~size,
-                tooltip = ~sprintf("%s: %d", name, size)
+                tooltip = ~tooltip
             ),
             data = vertices %>% filter(.data$resolution != 1)
         ) +
@@ -614,7 +670,7 @@ globalVariables(c(
         } +
         ggplot2::geom_text(
             aes_string("x", "y", label = "label"),
-            data = labels
+            data = resolutionLabels
         ) +
         labs(alpha = "Proportion", color = "Cluster") +
         scale_size(guide = "none", range = c(2, 7)) +
@@ -640,6 +696,8 @@ globalVariables(c(
 #' containing the columns `"unit"` (name of the observational unit; either a
 #' gene name or a spot name), `"resolution"`, `"cluster"`, and `"name"` (a
 #' unique identifier of the (resolution, cluster) pair).
+#' @param clusterMeans \code{\link[base]{data.frame}} with columns `"name"`,
+#' `"resolution"`, `"cluster"`, `featureName`, and `"mean"`.
 #' @param scores \code{\link[base]{data.frame}} with cluster scores for each
 #' spot in each resolution containing the columns `"spot"`, `"resolution"`,
 #' `"cluster"`, `"name"`, and `"score"`.
@@ -650,14 +708,18 @@ globalVariables(c(
 #' @param coordinates \code{\link[base]{data.frame}} with `rownames` matching
 #' the \code{\link[base]{names}} in `scores` and columns `"x"` and `"y"`
 #' specifying the plotting position of each observation.
+#' @param featureName \code{\link[base]{character}} with the name of the
+#' clustered feature.
 #' @return server function, to be passed to \code{\link[shiny]{shinyApp}}.
 #' @keywords internal
 .makeServer <- function(
     assignments,
+    clusterMeans,
     scores,
     colors,
     image,
-    coordinates
+    coordinates,
+    featureName
 ) {
     resolutions <-
         levels(assignments$resolution) %>%
@@ -680,9 +742,11 @@ globalVariables(c(
         treePlot <- reactive({
             p <- .clusterTree(
                 assignments,
+                clusterMeans,
                 transitionProportions = edgeProportions(),
                 transitionLabels = edgeLabels() == "Show",
-                transitionThreshold = edgeThreshold()
+                transitionThreshold = edgeThreshold(),
+                featureName = featureName
             ) +
                 scale_color_manual(values = colors)
         })
@@ -843,7 +907,7 @@ globalVariables(c(
                 # ^ Hide ggiraph toolbar
 
                 ".row { display: flex }",
-                "svg { height: 500px !important }"
+                "#tree svg { height: 500px !important }"
                 # ^ Set tree plot size explicitly
             )
         ))),
@@ -923,10 +987,12 @@ globalVariables(c(
         ui = .makeUI(!is.null(image)),
         server = .makeServer(
             assignments = data$assignments,
+            clusterMeans = data$means,
             scores = data$scores,
             colors = data$colors,
             image = image,
-            coordinates = data$coordinates
+            coordinates = data$coordinates,
+            featureName = data$featureName
         )
     )
 }

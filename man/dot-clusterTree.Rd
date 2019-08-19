@@ -4,12 +4,19 @@
 \alias{.clusterTree}
 \title{Cluster tree}
 \usage{
-.clusterTree(assignments, transitionProportions = "To",
-  transitionLabels = FALSE, transitionThreshold = 0)
+.clusterTree(assignments, clusterMeans, featureName,
+  transitionProportions = "To", transitionLabels = FALSE,
+  transitionThreshold = 0, numTopFeatures = 10)
 }
 \arguments{
 \item{assignments}{\code{\link[base]{data.frame}} with columns \code{"name"},
 \code{"resolution"}, and \code{"cluster"}.}
+
+\item{clusterMeans}{\code{\link[base]{data.frame}} with columns \code{"name"},
+\code{"resolution"}, \code{"cluster"}, \code{featureName}, and \code{"mean"}.}
+
+\item{featureName}{\code{\link[base]{character}} with the name of the
+clustered feature.}
 
 \item{transitionProportions}{how to compute the transition proportions.
 Possible values are:
@@ -25,6 +32,9 @@ show edge labels.}
 
 \item{transitionThreshold}{hide edges with transition proportions below this
 threshold.}
+
+\item{numTopFeatures}{\code{\link[base]{integer}} specifying the number of
+features to show in the hover tooltips.}
 }
 \value{
 \code{\link[ggplot2]{ggplot}} object of the cluster tree.

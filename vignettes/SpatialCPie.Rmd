@@ -110,6 +110,8 @@ assignInNamespace(
             clusters = data$assignments %>% select(-.data$name),
             treePlot = SpatialCPie:::.clusterTree(
                 data$assignments,
+                data$means,
+                data$featureName,
                 transitionLabels = TRUE,
                 transitionThreshold = 0.05
             ) +
