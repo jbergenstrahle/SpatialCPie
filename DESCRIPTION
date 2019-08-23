@@ -1,6 +1,6 @@
 Package: SpatialCPie
 Title: Cluster analysis of Spatial Transcriptomics data
-Version: 1.1.7
+Version: 1.1.8
 Authors@R:
     person(
         "Joseph", "Bergenstraahle",
@@ -35,11 +35,13 @@ Imports:
     igraph (>= 1.2.2),
     lpSolve (>= 5.6.13),
     methods (>= 3.5.0),
-    miniUI (>= 0.1.1.1),
     purrr (>= 0.2.5),
     readr (>= 1.1.1),
     rlang (>= 0.2.2),
     shiny (>= 1.1.0),
+    shinycssloaders (>= 0.2.0),
+    shinyjs (>= 1.0),
+    shinyWidgets (>= 0.4.8),
     stats (>= 3.6.0),
     SummarizedExperiment (>= 1.10.1),
     tibble (>= 1.4.2),

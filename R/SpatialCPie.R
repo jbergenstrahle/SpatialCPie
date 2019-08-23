@@ -7,7 +7,7 @@
 #' aes_ aes_string coord_fixed element_blank geom_segment ggplot ggtitle guides
 #' guide_legend
 #' labs
-#' theme theme_bw
+#' theme theme_bw theme_minimal
 #' scale_color_manual scale_fill_manual scale_size
 #' scale_x_continuous scale_y_continuous
 #' @importFrom grid unit
@@ -18,6 +18,7 @@
 #' @importFrom readr read_file write_file
 #' @importFrom rlang !! := .data sym
 #' @importFrom shiny debounce observeEvent reactive
+#' @importFrom shinyjs hideElement
 #' @importFrom stats dist kmeans setNames sd
 #' @importFrom SummarizedExperiment assay
 #' @importFrom tibble column_to_rownames rownames_to_column
@@ -537,11 +538,12 @@ globalVariables(c(
         coord_fixed() +
         scale_x_continuous(expand = c(0, 0), limits = c(xmin, xmax)) +
         scale_y_continuous(expand = c(0, 0), limits = c(ymin, ymax)) +
-        theme_bw() +
+        theme_minimal() +
         theme(
             axis.text = element_blank(),
             axis.title = element_blank(),
-            axis.ticks = element_blank()
+            axis.ticks = element_blank(),
+            panel.grid = element_blank()
         )
 }
 
@@ -787,6 +789,11 @@ globalVariables(c(
         keep(~. != 1)
 
     function(input, output, session) {
+        if (is.null(image)) {
+            hideElement("showImage")
+            hideElement("spotOpacity")
+        }
+
         ###
         ## INPUTS
         edgeProportions <- reactive({ input$edgeProportions })
@@ -804,7 +811,7 @@ globalVariables(c(
                 assignments,
                 clusterMeans,
                 transitionProportions = edgeProportions(),
-                transitionLabels = edgeLabels() == "Show",
+                transitionLabels = edgeLabels(),
                 transitionThreshold = edgeThreshold(),
                 featureName = featureName
             ) +
@@ -814,39 +821,23 @@ globalVariables(c(
         output$tree <- ggiraph::renderGirafe({
             plot <- ggiraph::girafe_options(
                 x = ggiraph::girafe(ggobj = treePlot()),
-                ggiraph::opts_hover(css = paste(
-                    "stroke:#888;",
-                    "stroke-width:0.2em;",
-                    "stroke-opacity:0.5;"
-                )),
-                ggiraph::opts_selection(css = paste(
-                    "stroke:#000;",
-                    "stroke-width:0.2em;",
-                    "stroke-opacity:0.5;"
-                ))
+                ggiraph::opts_toolbar(saveaspng = FALSE)
             )
-
-            ## Copy selection from the previous tree
-            if (length(input$tree_selected) > 0) {
-                session$onFlushed(function()
-                    shiny::isolate(session$sendCustomMessage(
-                        "tree_set",
-                        input$tree_selected
-                    )
-                ))
-            }
-
             plot
         })
 
-        ## Set initial selection
-        session$onFlushed(function() session$sendCustomMessage(
-            "tree_set", as.character(resolutions)
-        ))
-
         ###
         ## ARRAY PLOT
+        arrayName <- function(r) sprintf("array%d", as.numeric(r))
+
         for (r in resolutions) {
+            shiny::insertUI("#array", "beforeEnd",
+                shiny::div(class = "array", "data-resolution" = r,
+                    ggiraph::girafeOutput(arrayName(r)) %>%
+                    shinycssloaders::withSpinner()
+                ),
+                immediate = TRUE
+            )
             ## We evaluate the below block in a new frame (with anonymous
             ## function call) in order to protect the value of `r`, which
             ## will have changed when the reactive expressions are
@@ -856,8 +847,7 @@ globalVariables(c(
                 scores_ <-
                     scores %>%
                     filter(.data$resolution == r_)
-                plotName <- sprintf("array_%s", r_)
-                assign(envir = parent.frame(), plotName, reactive(
+                assign(envir = parent.frame(), arrayName(r_), reactive(
                     .arrayPlot(
                         scores = scores_ %>%
                             select(.data$spot, .data$name, .data$score),
@@ -865,7 +855,7 @@ globalVariables(c(
                         counts = counts,
                         image =
                             if (!is.null(image) && !is.null(coordinates) &&
-                                    showImage() == "Show")
+                                    showImage())
                                 grid::rasterGrob(
                                     image,
                                     width = unit(1, "npc"),
@@ -875,56 +865,26 @@ globalVariables(c(
                             else NULL,
                         scoreMultiplier = 2 ** scoreMultiplier(),
                         spotScale = spotSize() / 5,
-                        spotOpacity = spotOpacity() / 100
+                        spotOpacity = spotOpacity()
                     ) +
                         guides(fill = guide_legend(title = "Cluster")) +
                         scale_fill_manual(
                             values = colors,
                             labels = unique(scores_$cluster)
-                        ) +
-                        ggtitle(sprintf("Resolution %s", r_))
+                        )
                 ))
-                output[[paste0("plot", r_)]] <- shiny::renderPlot(
+                output[[arrayName(r_)]] <- ggiraph::renderGirafe(
                     {
-                        message(sprintf("Loading resolution \"%s\"...", r_))
-                        eval(call(plotName))
-                    },
-                    width = 600, height = 500
+                        ggiraph::girafe_options(
+                            x = ggiraph::girafe(
+                                ggobj = eval(call(arrayName(r_)))),
+                            ggiraph::opts_toolbar(saveaspng = FALSE),
+                            ggiraph::opts_zoom(max = 5)
+                        )
+                    }
                 )
             })()
         }
-
-        output$array <- shiny::renderUI({
-            sort(as.numeric(input$tree_selected)) %>%
-                map(~paste0("plot", .)) %>%
-                keep(~. %in% names(shiny::outputOptions(output))) %>%
-                map(~shiny::div(
-                    style = "display: inline-block;",
-                    shiny::div(
-                        style = "position: relative",
-                        list(
-                            shiny::plotOutput(., height="auto"),
-                            shiny::div(
-                                style = paste(
-                                    "z-index: -1;",
-                                    "position: absolute;",
-                                    "top: 50%; left: 50%;"
-                                ),
-                                shiny::div(
-                                    style = paste(
-                                        "background: #eee;",
-                                        "padding: 1em;",
-                                        "position: relative;",
-                                        "left: -50%;"
-                                    ),
-                                    "Loading..."
-                                )
-                            )
-                        )
-                    )
-                )) %>%
-                invoke(shiny::div, style = "text-align:center", .)
-        })
 
         ###
         ## EXPORT
@@ -933,8 +893,8 @@ globalVariables(c(
                 clusters = assignments %>% select(-.data$name),
                 treePlot = treePlot(),
                 piePlots = lapply(
-                    setNames(nm = input$tree_selected),
-                    function(x) eval(call(sprintf("array_%s", x)))
+                    setNames(nm = resolutions),
+                    function(x) eval(call(arrayName(x)))
                 )
             )
         })
@@ -945,94 +905,11 @@ globalVariables(c(
 
 #' SpatialCPie UI
 #'
-#' @param imageButton \code{\link[base]{logical}} specifying if the UI should
-#' include a "show image" radio button.
 #' @return SpatialCPie UI, to be passed to \code{\link[shiny]{shinyApp}}.
 #' @keywords internal
-.makeUI <- function(
-    imageButton = FALSE
-) {
-    miniUI::miniPage(
-        shiny::tags$head(shiny::tags$style(shiny::HTML(
-            paste(sep = "\n",
-                "h3 { font-size: 1.3em }",
-                "h3:first-child { margin-top: 0 }",
-
-                "input[type=radio] { margin-top: 0 }",
-                # ^ Remove radio button top margin (shiny bug?)
-
-                ".recalculating { position: relative; z-index: -2 }",
-                # ^ Position loading boxes
-
-                ".ggiraph-toolbar { display: none }",
-                # ^ Hide ggiraph toolbar
-
-                ".row { display: flex }",
-                "#tree svg { height: 500px !important }"
-                # ^ Set tree plot size explicitly
-            )
-        ))),
-        miniUI::gadgetTitleBar("SpatialCPie"),
-        miniUI::miniContentPanel(
-            shiny::fillPage(
-                shiny::sidebarLayout(
-                    shiny::sidebarPanel(width = 3,
-                        shiny::h3("Cluster Tree"),
-                        shiny::radioButtons(
-                            "edgeLabels",
-                            "Edge labels:", c("Show", "Hide")
-                        ),
-                        shiny::radioButtons(
-                            "edgeProportions",
-                            "Edge proportions:", c("To", "From")
-                        ),
-                        shiny::numericInput(
-                            "edgeThreshold",
-                            "Min proportion:",
-                            max = 1.00, min = 0.00, value = 0.05, step = 0.01
-                        )
-                    ),
-                    shiny::mainPanel(style = "text-align: center",
-                        ggiraph::girafeOutput(
-                            "tree",
-                            width = "100%", height = "100%"
-                        )
-                    )
-                ),
-                shiny::hr(),
-                shiny::sidebarLayout(
-                    shiny::sidebarPanel(width = 3,
-                        shiny::h3("Array Plots"),
-                        if (isTRUE(imageButton))
-                            shiny::radioButtons(
-                                "showImage",
-                                "HE image:", c("Show", "Hide")
-                            )
-                        else NULL,
-                        shiny::numericInput(
-                            "scoreMultiplier",
-                            "Score log-multiplier:",
-                            max = 10, min = -10, value = 5, step = 0.1
-                        ),
-                        shiny::numericInput(
-                            "spotOpacity",
-                            "Opacity:",
-                            max = 100,
-                            min = 1,
-                            value = if (imageButton) 70 else 100,
-                            step = 10
-                        ),
-                        shiny::numericInput(
-                            "spotSize",
-                            "Size:",
-                            max = 10, min = 1, value = 5, step = 1
-                        )
-                    ),
-                    shiny::mainPanel(shiny::uiOutput("array"))
-                )
-            )
-        )
-    )
+.makeUI <- function() {
+    shiny::htmlTemplate(system.file(
+        "www", "default", "index.html", package = "SpatialCPie"))
 }
 
 
@@ -1045,7 +922,7 @@ globalVariables(c(
 .makeApp <- function(image, ...) {
     data <- .preprocessData(...)
     shiny::shinyApp(
-        ui = .makeUI(!is.null(image)),
+        ui = .makeUI(),
         server = .makeServer(
             assignments = data$assignments,
             clusterMeans = data$means,
@@ -1127,6 +1004,6 @@ runCPie <- function(
             resolutions = resolutions,
             assignmentFunction = assignmentFunction
         ),
-        viewer = view %||% shiny::dialogViewer("SpatialCPie")
+        viewer = view %||% shiny::paneViewer()
     )
 }
