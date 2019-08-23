@@ -4,11 +4,7 @@
 \alias{.makeUI}
 \title{SpatialCPie UI}
 \usage{
-.makeUI(imageButton = FALSE)
-}
-\arguments{
-\item{imageButton}{\code{\link[base]{logical}} specifying if the UI should
-include a "show image" radio button.}
+.makeUI()
 }
 \value{
 SpatialCPie UI, to be passed to \code{\link[shiny]{shinyApp}}.

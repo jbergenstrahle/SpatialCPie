@@ -1,11 +1,13 @@
+#' @importFrom data.table as.data.table
 #' @importFrom dplyr
-#' filter first group_by inner_join mutate n rename select summarize ungroup
+#' arrange filter first group_by inner_join mutate n rename select summarize
+#' ungroup
 #' @importFrom ggiraph geom_point_interactive
 #' @importFrom ggplot2
 #' aes_ aes_string coord_fixed element_blank geom_segment ggplot ggtitle guides
 #' guide_legend
 #' labs
-#' theme theme_bw
+#' theme theme_bw theme_minimal
 #' scale_color_manual scale_fill_manual scale_size
 #' scale_x_continuous scale_y_continuous
 #' @importFrom grid unit
@@ -16,11 +18,13 @@
 #' @importFrom readr read_file write_file
 #' @importFrom rlang !! := .data sym
 #' @importFrom shiny debounce observeEvent reactive
+#' @importFrom shinyjs hideElement
 #' @importFrom stats dist kmeans setNames sd
 #' @importFrom SummarizedExperiment assay
 #' @importFrom tibble column_to_rownames rownames_to_column
 #' @importFrom tidyr gather separate spread unite
 #' @importFrom tidyselect everything quo
+#' @importFrom tools toTitleCase
 #' @importFrom utils head tail
 #' @importFrom utils str
 #' @importFrom zeallot %<-%
@@ -31,11 +35,27 @@
 ## (ref: https://stackoverflow.com/a/12429344)
 globalVariables(c(
     ".",
+    "cluster",
+    "count",
+    "name",
     "otherMargin",
+    "resolution",
+    "spot",
     "xcoord",
     "ycoord",
     NULL
 ))
+
+
+#' Logsumexp
+#'
+#' Adapted from https://stat.ethz.ch/pipermail/r-help/2011-February/269205.html
+#' @param xs
+#' @keywords internal
+.logsumexp <- function(xs) {
+    idx <- which.max(xs)
+    log1p(sum(exp(xs[-idx] - xs[idx]))) + xs[idx]
+}
 
 
 #' Likeness score
@@ -48,8 +68,7 @@ globalVariables(c(
     d,
     c = 1.0
 ) {
-    score <- exp(-c * d)
-    score / sum(score)
+    exp(-c * d - .logsumexp(-c * d))
 }
 
 #' Z-score
@@ -181,6 +200,7 @@ globalVariables(c(
 
     ## Relabel the data to maximize overlap between labels in consecutive
     ## resolutions
+    message("Maximizing label overlap in consecutive resolutions")
     assignments <- .maximizeOverlap(assignments)
 
     ## Concatenate assignments to `data.frame`
@@ -249,10 +269,12 @@ globalVariables(c(
 #' the spots.
 #' @return list with the following elements:
 #' - `$assignments`: tidy assignments
+#' - `$means`: cluster means
 #' - `$scores`: cluster scores for each spot in each resolution
 #' - `$colors`: cluster colors
 #' - `$coordinates`: spot coordinates, either from `coordinates` or parsed from
 #' `assignments`
+#' - `$featureName`: name of the clustered feature (the "opposite" of `margin`)
 #' @keywords internal
 .preprocessData <- function(
     counts,
@@ -289,16 +311,19 @@ globalVariables(c(
 
     assignments <-
         resolutions %>%
-        map(~assignmentFunction(
-            .,
-            if (margin == "spot") t(counts)
-            else {
-                log(as.matrix(counts) + 1) %>%
-                    prop.table(margin = 2) %>%
-                    apply(1, .zscore) %>%
-                    t()
-            }
-        )) %>%
+        map(function(r) {
+            message(sprintf("Clustering resolution %d", r))
+            assignmentFunction(
+                r,
+                if (margin == "spot") t(counts)
+                else {
+                    log(as.matrix(counts) + 1) %>%
+                        prop.table(margin = 2) %>%
+                        apply(1, .zscore) %>%
+                        t()
+                }
+            )
+        }) %>%
         setNames(resolutions) %>%
         .tidyAssignments() %>%
         rename(!! sym(margin) := .data$unit)
@@ -333,22 +358,22 @@ globalVariables(c(
         column_to_rownames(otherMargin) %>%
         .computeClusterColors()
 
+    message("Scoring spot-cluster affinity")
     scores <-
         if (margin == "spot") {
-            longCounts %>%
-                inner_join(clusterMeans, by = "gene") %>%
-                group_by(
-                    .data$resolution,
-                    .data$spot,
-                    .data$cluster,
-                    .data$name
-                ) %>%
-                summarize(
-                    distance = sqrt(mean((.data$count - .data$mean) ^ 2))
-                ) %>%
-                ungroup() %>%
+            countsAndMeans <-
+                longCounts %>%
+                inner_join(clusterMeans, by = "gene")
+            distances <- as.data.table(countsAndMeans)[,
+                .(distance = sqrt(mean((count - mean) ^ 2))),
+                by = .(resolution, cluster, spot, name)
+            ]
+            distances %>%
                 group_by(.data$resolution, .data$spot) %>%
-                mutate(score = .likeness(.data$distance)) %>%
+                mutate(
+                    score = .likeness(.data$distance / sum(.data$distance),
+                    c = 40.
+                )) %>%
                 ungroup() %>%
                 select(-.data$distance)
         } else {
@@ -375,14 +400,52 @@ globalVariables(c(
     normalizedScores <-
         scores %>%
         group_by(.data$resolution, .data$spot) %>%
-        mutate(score = .data$score / sum(.data$score)) %>%
+        mutate(score = .data$score / max(.data$score)) %>%
         ungroup()
 
     list(
         assignments = assignments %>% rename(unit = !! sym(margin)),
+        counts = longCounts,
+        means = clusterMeans,
         scores = normalizedScores,
         colors = colors,
-        coordinates = coordinates
+        coordinates = coordinates,
+        featureName = otherMargin
+    )
+}
+
+
+#' SVG barplot
+#'
+#' @param xs named vector with observations
+#' @return \code{\link{character}} SVG barplot
+#' @keywords internal
+.SVGBarplot <- function(xs) {
+    invoke(
+        paste,
+        sprintf(
+            paste0(
+                "<svg width=\"20em\" height=\"1.5em\">",
+                paste0(
+                    "<rect width=\"%f%%\" height=\"1.5em\" ",
+                    "style=\"fill:rgb(125,125,125)\"></rect>"
+                ),
+                paste0(
+                    "<text x=\"2%%\" y=\"50%%\" fill=\"black\"",
+                    "dominant-baseline=\"central\">%s</text>"
+                ),
+                paste0(
+                    "<text x=\"%f%%\" y=\"50%%\" fill=\"white\"",
+                    "dominant-baseline=\"central\" >%.2f</text>"
+                ),
+                "</svg>"
+            ),
+            70 * xs / max(xs),
+            names(xs),
+            70 * xs / max(xs) + 2,
+            xs
+        ),
+        sep="\n"
     )
 }
 
@@ -404,10 +467,12 @@ globalVariables(c(
 .arrayPlot <- function(
     scores,
     coordinates,
+    counts = NULL,
     image = NULL,
     scoreMultiplier = 1.0,
     spotScale = 1,
-    spotOpacity = 1
+    spotOpacity = 1,
+    numTopGenes = 5
 ) {
     spots <- intersect(scores$spot, rownames(coordinates))
 
@@ -432,29 +497,53 @@ globalVariables(c(
 
     coordinates$y <- ymax - coordinates$y + ymin
 
-    wideScores <-
-        scores %>%
+    df <-
+        coordinates %>%
+        rownames_to_column("spot") %>%
+        inner_join(scores, by="spot") %>%
         mutate(score = .data$score ^ scoreMultiplier) %>%
-        spread(.data$name, .data$score) %>%
-        as.data.frame() %>%
-        column_to_rownames("spot")
+        mutate(tooltip = .data$spot)
+
+    if (!is.null(counts)) {
+        topGenes <-
+            counts %>%
+            group_by(.data$spot) %>%
+            mutate(rank = rank(-.data$count, ties.method = "first")) %>%
+            filter(.data$rank <= numTopGenes) %>%
+            arrange(-.data$count) %>%
+            summarize(topGenes = paste(
+                .SVGBarplot(setNames(.data$count, .data$gene))
+            ))
+        df <-
+            df %>%
+            inner_join(topGenes, by = "spot") %>%
+            mutate(tooltip = paste(sep = "<br />",
+                .data$tooltip,
+                .data$topGenes
+            )) %>%
+            select(-.data$topGenes)
+    }
 
     ggplot() +
         annotation +
-        scatterpie::geom_scatterpie(
-            mapping = aes_string(x = "x", y = "y", r = "r"),
-            data = cbind(wideScores[spots, ], coordinates[spots, ]),
-            cols = colnames(wideScores),
-            alpha = spotOpacity
+        geom_scatterpie_interactive(
+            mapping = ggplot2::aes_string(
+                x0 = "x", y0 = "y", r = "r", amount = "score", fill = "name",
+                tooltip = "tooltip"
+            ),
+            data = df,
+            alpha = spotOpacity,
+            n = 64
         ) +
         coord_fixed() +
         scale_x_continuous(expand = c(0, 0), limits = c(xmin, xmax)) +
         scale_y_continuous(expand = c(0, 0), limits = c(ymin, ymax)) +
-        theme_bw() +
+        theme_minimal() +
         theme(
             axis.text = element_blank(),
             axis.title = element_blank(),
-            axis.ticks = element_blank()
+            axis.ticks = element_blank(),
+            panel.grid = element_blank()
         )
 }
 
@@ -463,6 +552,10 @@ globalVariables(c(
 #'
 #' @param assignments \code{\link[base]{data.frame}} with columns `"name"`,
 #' `"resolution"`, and `"cluster"`.
+#' @param clusterMeans \code{\link[base]{data.frame}} with columns `"name"`,
+#' `"resolution"`, `"cluster"`, `featureName`, and `"mean"`.
+#' @param featureName \code{\link[base]{character}} with the name of the
+#' clustered feature.
 #' @param transitionProportions how to compute the transition proportions.
 #' Possible values are:
 #' - `"From"`: based on the total number of assignments in the lower-resolution
@@ -473,13 +566,18 @@ globalVariables(c(
 #' show edge labels.
 #' @param transitionThreshold hide edges with transition proportions below this
 #' threshold.
+#' @param numTopFeatures \code{\link[base]{integer}} specifying the number of
+#' features to show in the hover tooltips.
 #' @return \code{\link[ggplot2]{ggplot}} object of the cluster tree.
 #' @keywords internal
 .clusterTree <- function(
     assignments,
+    clusterMeans,
+    featureName,
     transitionProportions = "To",
     transitionLabels = FALSE,
-    transitionThreshold = 0.0
+    transitionThreshold = 0.0,
+    numTopFeatures = 10
 ) {
     transitionSym <-
         if (transitionProportions == "To") "toNode"
@@ -560,7 +658,7 @@ globalVariables(c(
             by = c("to" = "name")
         )
 
-    labels <-
+    resolutionLabels <-
         vertices %>%
         select(.data$resolution, .data$x, .data$y) %>%
         filter(.data$resolution != 1) %>%
@@ -576,6 +674,26 @@ globalVariables(c(
             levels(assignments$resolution)[.data$resolution]
         ))
 
+    tooltips <-
+        clusterMeans %>%
+        mutate(name = as.character(.data$name)) %>%
+        group_by(.data$name) %>%
+        mutate(rank = rank(-.data$mean, ties.method = "first")) %>%
+        filter(.data$rank <= numTopFeatures) %>%
+        arrange(-.data$mean) %>%
+        summarize(tooltip = .SVGBarplot(setNames(
+            mean,
+            nm = !! sym(featureName)
+        )))
+    vertices <-
+        vertices %>%
+        inner_join(tooltips, by = "name") %>%
+        mutate(tooltip = paste(sep = "<br />",
+            toTitleCase(.data$name),
+            sprintf("Size: %d", .data$size),
+            .data$tooltip
+        ))
+
     ggplot() +
         geom_segment(
             aes_string(
@@ -589,10 +707,9 @@ globalVariables(c(
         geom_point_interactive(
             aes_(
                 ~x, ~y,
-                data_id = ~levels(assignments$resolution)[.data$resolution],
                 color = ~name,
                 size = ~size,
-                tooltip = ~sprintf("%s: %d", name, size)
+                tooltip = ~tooltip
             ),
             data = vertices %>% filter(.data$resolution != 1)
         ) +
@@ -614,7 +731,7 @@ globalVariables(c(
         } +
         ggplot2::geom_text(
             aes_string("x", "y", label = "label"),
-            data = labels
+            data = resolutionLabels
         ) +
         labs(alpha = "Proportion", color = "Cluster") +
         scale_size(guide = "none", range = c(2, 7)) +
@@ -640,6 +757,8 @@ globalVariables(c(
 #' containing the columns `"unit"` (name of the observational unit; either a
 #' gene name or a spot name), `"resolution"`, `"cluster"`, and `"name"` (a
 #' unique identifier of the (resolution, cluster) pair).
+#' @param clusterMeans \code{\link[base]{data.frame}} with columns `"name"`,
+#' `"resolution"`, `"cluster"`, `featureName`, and `"mean"`.
 #' @param scores \code{\link[base]{data.frame}} with cluster scores for each
 #' spot in each resolution containing the columns `"spot"`, `"resolution"`,
 #' `"cluster"`, `"name"`, and `"score"`.
@@ -650,14 +769,19 @@ globalVariables(c(
 #' @param coordinates \code{\link[base]{data.frame}} with `rownames` matching
 #' the \code{\link[base]{names}} in `scores` and columns `"x"` and `"y"`
 #' specifying the plotting position of each observation.
+#' @param featureName \code{\link[base]{character}} with the name of the
+#' clustered feature.
 #' @return server function, to be passed to \code{\link[shiny]{shinyApp}}.
 #' @keywords internal
 .makeServer <- function(
     assignments,
+    clusterMeans,
+    counts,
     scores,
     colors,
     image,
-    coordinates
+    coordinates,
+    featureName
 ) {
     resolutions <-
         levels(assignments$resolution) %>%
@@ -665,6 +789,11 @@ globalVariables(c(
         keep(~. != 1)
 
     function(input, output, session) {
+        if (is.null(image)) {
+            hideElement("showImage")
+            hideElement("spotOpacity")
+        }
+
         ###
         ## INPUTS
         edgeProportions <- reactive({ input$edgeProportions })
@@ -680,9 +809,11 @@ globalVariables(c(
         treePlot <- reactive({
             p <- .clusterTree(
                 assignments,
+                clusterMeans,
                 transitionProportions = edgeProportions(),
-                transitionLabels = edgeLabels() == "Show",
-                transitionThreshold = edgeThreshold()
+                transitionLabels = edgeLabels(),
+                transitionThreshold = edgeThreshold(),
+                featureName = featureName
             ) +
                 scale_color_manual(values = colors)
         })
@@ -690,39 +821,23 @@ globalVariables(c(
         output$tree <- ggiraph::renderGirafe({
             plot <- ggiraph::girafe_options(
                 x = ggiraph::girafe(ggobj = treePlot()),
-                ggiraph::opts_hover(css = paste(
-                    "stroke:#888;",
-                    "stroke-width:0.2em;",
-                    "stroke-opacity:0.5;"
-                )),
-                ggiraph::opts_selection(css = paste(
-                    "stroke:#000;",
-                    "stroke-width:0.2em;",
-                    "stroke-opacity:0.5;"
-                ))
+                ggiraph::opts_toolbar(saveaspng = FALSE)
             )
-
-            ## Copy selection from the previous tree
-            if (length(input$tree_selected) > 0) {
-                session$onFlushed(function()
-                    shiny::isolate(session$sendCustomMessage(
-                        "tree_set",
-                        input$tree_selected
-                    )
-                ))
-            }
-
             plot
         })
 
-        ## Set initial selection
-        session$onFlushed(function() session$sendCustomMessage(
-            "tree_set", as.character(resolutions)
-        ))
-
         ###
         ## ARRAY PLOT
+        arrayName <- function(r) sprintf("array%d", as.numeric(r))
+
         for (r in resolutions) {
+            shiny::insertUI("#array", "beforeEnd",
+                shiny::div(class = "array", "data-resolution" = r,
+                    ggiraph::girafeOutput(arrayName(r)) %>%
+                    shinycssloaders::withSpinner()
+                ),
+                immediate = TRUE
+            )
             ## We evaluate the below block in a new frame (with anonymous
             ## function call) in order to protect the value of `r`, which
             ## will have changed when the reactive expressions are
@@ -732,15 +847,15 @@ globalVariables(c(
                 scores_ <-
                     scores %>%
                     filter(.data$resolution == r_)
-                plotName <- sprintf("array_%s", r_)
-                assign(envir = parent.frame(), plotName, reactive(
+                assign(envir = parent.frame(), arrayName(r_), reactive(
                     .arrayPlot(
                         scores = scores_ %>%
                             select(.data$spot, .data$name, .data$score),
                         coordinates = coordinates,
+                        counts = counts,
                         image =
                             if (!is.null(image) && !is.null(coordinates) &&
-                                    showImage() == "Show")
+                                    showImage())
                                 grid::rasterGrob(
                                     image,
                                     width = unit(1, "npc"),
@@ -750,56 +865,26 @@ globalVariables(c(
                             else NULL,
                         scoreMultiplier = 2 ** scoreMultiplier(),
                         spotScale = spotSize() / 5,
-                        spotOpacity = spotOpacity() / 100
+                        spotOpacity = spotOpacity()
                     ) +
                         guides(fill = guide_legend(title = "Cluster")) +
                         scale_fill_manual(
                             values = colors,
                             labels = unique(scores_$cluster)
-                        ) +
-                        ggtitle(sprintf("Resolution %s", r_))
+                        )
                 ))
-                output[[paste0("plot", r_)]] <- shiny::renderPlot(
+                output[[arrayName(r_)]] <- ggiraph::renderGirafe(
                     {
-                        message(sprintf("Loading resolution \"%s\"...", r_))
-                        eval(call(plotName))
-                    },
-                    width = 600, height = 500
+                        ggiraph::girafe_options(
+                            x = ggiraph::girafe(
+                                ggobj = eval(call(arrayName(r_)))),
+                            ggiraph::opts_toolbar(saveaspng = FALSE),
+                            ggiraph::opts_zoom(max = 5)
+                        )
+                    }
                 )
             })()
         }
-
-        output$array <- shiny::renderUI({
-            sort(as.numeric(input$tree_selected)) %>%
-                map(~paste0("plot", .)) %>%
-                keep(~. %in% names(shiny::outputOptions(output))) %>%
-                map(~shiny::div(
-                    style = "display: inline-block;",
-                    shiny::div(
-                        style = "position: relative",
-                        list(
-                            shiny::plotOutput(., height="auto"),
-                            shiny::div(
-                                style = paste(
-                                    "z-index: -1;",
-                                    "position: absolute;",
-                                    "top: 50%; left: 50%;"
-                                ),
-                                shiny::div(
-                                    style = paste(
-                                        "background: #eee;",
-                                        "padding: 1em;",
-                                        "position: relative;",
-                                        "left: -50%;"
-                                    ),
-                                    "Loading..."
-                                )
-                            )
-                        )
-                    )
-                )) %>%
-                invoke(shiny::div, style = "text-align:center", .)
-        })
 
         ###
         ## EXPORT
@@ -808,8 +893,8 @@ globalVariables(c(
                 clusters = assignments %>% select(-.data$name),
                 treePlot = treePlot(),
                 piePlots = lapply(
-                    setNames(nm = input$tree_selected),
-                    function(x) eval(call(sprintf("array_%s", x)))
+                    setNames(nm = resolutions),
+                    function(x) eval(call(arrayName(x)))
                 )
             )
         })
@@ -820,94 +905,11 @@ globalVariables(c(
 
 #' SpatialCPie UI
 #'
-#' @param imageButton \code{\link[base]{logical}} specifying if the UI should
-#' include a "show image" radio button.
 #' @return SpatialCPie UI, to be passed to \code{\link[shiny]{shinyApp}}.
 #' @keywords internal
-.makeUI <- function(
-    imageButton = FALSE
-) {
-    miniUI::miniPage(
-        shiny::tags$head(shiny::tags$style(shiny::HTML(
-            paste(sep = "\n",
-                "h3 { font-size: 1.3em }",
-                "h3:first-child { margin-top: 0 }",
-
-                "input[type=radio] { margin-top: 0 }",
-                # ^ Remove radio button top margin (shiny bug?)
-
-                ".recalculating { position: relative; z-index: -2 }",
-                # ^ Position loading boxes
-
-                ".ggiraph-toolbar { display: none }",
-                # ^ Hide ggiraph toolbar
-
-                ".row { display: flex }",
-                "svg { height: 500px !important }"
-                # ^ Set tree plot size explicitly
-            )
-        ))),
-        miniUI::gadgetTitleBar("SpatialCPie"),
-        miniUI::miniContentPanel(
-            shiny::fillPage(
-                shiny::sidebarLayout(
-                    shiny::sidebarPanel(width = 3,
-                        shiny::h3("Cluster Tree"),
-                        shiny::radioButtons(
-                            "edgeLabels",
-                            "Edge labels:", c("Show", "Hide")
-                        ),
-                        shiny::radioButtons(
-                            "edgeProportions",
-                            "Edge proportions:", c("To", "From")
-                        ),
-                        shiny::numericInput(
-                            "edgeThreshold",
-                            "Min proportion:",
-                            max = 1.00, min = 0.00, value = 0.05, step = 0.01
-                        )
-                    ),
-                    shiny::mainPanel(style = "text-align: center",
-                        ggiraph::girafeOutput(
-                            "tree",
-                            width = "100%", height = "100%"
-                        )
-                    )
-                ),
-                shiny::hr(),
-                shiny::sidebarLayout(
-                    shiny::sidebarPanel(width = 3,
-                        shiny::h3("Array Plots"),
-                        if (isTRUE(imageButton))
-                            shiny::radioButtons(
-                                "showImage",
-                                "HE image:", c("Show", "Hide")
-                            )
-                        else NULL,
-                        shiny::numericInput(
-                            "scoreMultiplier",
-                            "Score log-multiplier:",
-                            max = 10, min = -10, value = 5, step = 0.1
-                        ),
-                        shiny::numericInput(
-                            "spotOpacity",
-                            "Opacity:",
-                            max = 100,
-                            min = 1,
-                            value = if (imageButton) 70 else 100,
-                            step = 10
-                        ),
-                        shiny::numericInput(
-                            "spotSize",
-                            "Size:",
-                            max = 10, min = 1, value = 5, step = 1
-                        )
-                    ),
-                    shiny::mainPanel(shiny::uiOutput("array"))
-                )
-            )
-        )
-    )
+.makeUI <- function() {
+    shiny::htmlTemplate(system.file(
+        "www", "default", "index.html", package = "SpatialCPie"))
 }
 
 
@@ -920,13 +922,16 @@ globalVariables(c(
 .makeApp <- function(image, ...) {
     data <- .preprocessData(...)
     shiny::shinyApp(
-        ui = .makeUI(!is.null(image)),
+        ui = .makeUI(),
         server = .makeServer(
             assignments = data$assignments,
+            clusterMeans = data$means,
+            counts = data$counts,
             scores = data$scores,
             colors = data$colors,
             image = image,
-            coordinates = data$coordinates
+            coordinates = data$coordinates,
+            featureName = data$featureName
         )
     )
 }
@@ -992,13 +997,13 @@ runCPie <- function(
     }
     shiny::runGadget(
         app = .makeApp(
-            counts = counts,
             image = image,
+            counts = counts,
             coordinates = spotCoordinates,
             margin = margin,
             resolutions = resolutions,
             assignmentFunction = assignmentFunction
         ),
-        viewer = view %||% shiny::dialogViewer("SpatialCPie")
+        viewer = view %||% shiny::paneViewer()
     )
 }

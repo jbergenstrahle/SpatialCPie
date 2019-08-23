@@ -1,0 +1,125 @@
+h1 { font-size: 1.5em; font-weight: bold; }
+h2 { font-size: 1.2em; font-weight: bold; }
+h3 { font-size: 1.0em; font-weight: bold; }
+h4 { font-size: 1.0em; font-style: italic; }
+
+body {
+    padding: 0 1em;
+    font-family: sans-serif;
+    font-size: small;
+    line-height: 1;
+}
+
+.version-string {
+    font-size: small;
+    font-style: italic;
+    font-weight: normal;
+}
+
+.title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.main-content {
+    display: flex;
+    justify-content: space-evenly;
+    flex-wrap: wrap;
+    margin: -0.5em;
+}
+.main-content > * {
+    flex-grow: 1;
+    margin: 0.5em;
+}
+
+.options-panel {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5em;
+    margin: 0.5em;
+    box-shadow: 0 1px 1px rgba(0,0,0,.05);
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.plot-area {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    justify-content: space-around;
+}
+
+.form-group {
+    display: flex;
+    align-items: center;
+    margin: 0 auto;
+}
+.form-group > label {
+    margin: 0 1em 0 0;
+    font-weight: normal;
+}
+.form-group > label + * {
+    flex: 1;
+}
+
+.panel {
+    display: flex;
+    flex-direction: column;
+}
+.panel .panel-body {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    padding: 0.5em;
+}
+
+.irs-with-grid {
+    min-width: 12em;
+}
+
+.shiny-input-container:not(.shiny-input-container-inline) {
+    width: auto;
+    margin: 0 auto;
+}
+
+.html-widget-output {
+    min-width: 40em;
+}
+
+#array {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-evenly;
+}
+
+.array-container {
+    display: flex;
+    box-shadow: 0 1px 1px rgba(0,0,0,.05);
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin: 0.5em;
+}
+
+.array-container-heading {
+    padding: 0.5em;
+    display: flex;
+    justify-content: space-between;
+    writing-mode: vertical-lr;
+    cursor: pointer;
+    transform: rotate(180deg);
+}
+
+.array-container-body {
+    transition: 0.5s ease;
+    overflow: hidden;
+    width: 100%;
+    visibility: visible;
+}
+.array-container-body.collapsed {
+    width: 0;
+    visibility: hidden;
+}
+.array-container svg {
+    background: white;
+}

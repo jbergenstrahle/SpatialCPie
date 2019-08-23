@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        {{ headContent() }}
+        {{ shiny::bootstrapLib() }}
+        {{ shinyjs::useShinyjs() }}
+        {{ shiny::includeCSS(system.file("www", "default", "style.css", package = "SpatialCPie")) }}
+        {{ shiny::includeScript(system.file("www", "default", "script.js", package = "SpatialCPie")) }}
+    </head>
+    <body>
+        <div class="title">
+            <div>
+                <h1>SpatialCPie <span class="version-string">v.{{ as.character(packageVersion("SpatialCPie")) }}</span></h1>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-default btn-sm action-button pull-left" id="cancel" type="button">Cancel</button>
+                <button class="btn btn-primary btn-sm action-button pull-right" id="done" type="button">Done</button>
+            </div>
+        </div>
+        <div class="main-content">
+            <div class="panel panel-primary">
+                <div class="panel-heading">
+                    Cluster Tree
+                </div>
+                <div class="panel-body">
+                    <div class="options-panel">
+                        {{
+                        shiny::sliderInput(
+                            "edgeThreshold",
+                            label = "Min. proportion",
+                            value = 0.05,
+                            min = 0, max = 1
+                        )
+                        }}
+
+                        {{
+                        shinyWidgets::radioGroupButtons(
+                            "edgeProportions",
+                            label = "Proportions",
+                            choices = c("From", "To"),
+                            selected = "To"
+                        )
+                        }}
+
+                        {{
+                        shinyWidgets::materialSwitch(
+                            "edgeLabels",
+                            label = "Labels",
+                            value = TRUE,
+                            status = "primary"
+                        )
+                        }}
+                    </div>
+                    <div class="plot-area">
+                        {{ ggiraph::girafeOutput("tree") }}
+                    </div>
+                </div>
+            </div>
+            <div class="panel panel-primary">
+                <div class="panel-heading">
+                    Array Plots
+                </div>
+                <div class="panel-body">
+                    <div class="options-panel">
+                        {{
+                        shiny::sliderInput(
+                            "scoreMultiplier",
+                            label = "Multiplier",
+                            value = 0,
+                            min = -10, max = 10
+                        )
+                        }}
+
+                        {{
+                        shiny::sliderInput(
+                            "spotOpacity",
+                            label = "Opacity",
+                            value = 1,
+                            min = 0, max = 1
+                        )
+                        }}
+
+                        {{
+                        shiny::sliderInput(
+                            "spotSize",
+                            label = "Size",
+                            value = 5,
+                            min = 1, max = 10
+                        )
+                        }}
+
+                        {{
+                        shinyWidgets::materialSwitch(
+                            "showImage",
+                            label = "Image",
+                            value = TRUE,
+                            status = "primary"
+                        )
+                        }}
+                    </div>
+                    <div class="plot-area">
+                        <div id="array"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

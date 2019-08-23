@@ -1,2 +1,13 @@
+Changes in version 1.1
++ (1.1.9) Added example on how to customize resolutions and assignment function to vignette
++ (1.1.8) Changed UI to make better use of screen real estate
++ (1.1.7) Added "top genes" barplot in array plot tooltip
++ (1.1.6) Scoring is now based on normalized distances
++ (1.1.5) Added interactivity to array plots
++ (1.1.4) Increased numerical stability
++ (1.1.3) Added log messages
++ (1.1.2) Performance improvements
++ (1.1.1) Added "top features" barplot in cluster tree tooltip
+
 Changes in version 1.0.0 (2018-08-17)
 + Initial release

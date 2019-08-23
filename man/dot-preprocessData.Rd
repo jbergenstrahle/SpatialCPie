@@ -30,10 +30,12 @@ the spots.}
 list with the following elements:
 \itemize{
 \item \code{$assignments}: tidy assignments
+\item \code{$means}: cluster means
 \item \code{$scores}: cluster scores for each spot in each resolution
 \item \code{$colors}: cluster colors
 \item \code{$coordinates}: spot coordinates, either from \code{coordinates} or parsed from
 \code{assignments}
+\item \code{$featureName}: name of the clustered feature (the "opposite" of \code{margin})
 }
 }
 \description{
