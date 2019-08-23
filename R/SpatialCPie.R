@@ -404,11 +404,47 @@ globalVariables(c(
 
     list(
         assignments = assignments %>% rename(unit = !! sym(margin)),
+        counts = longCounts,
         means = clusterMeans,
         scores = normalizedScores,
         colors = colors,
         coordinates = coordinates,
         featureName = otherMargin
+    )
+}
+
+
+#' SVG barplot
+#'
+#' @param xs named vector with observations
+#' @return \code{\link{character}} SVG barplot
+#' @keywords internal
+.SVGBarplot <- function(xs) {
+    invoke(
+        paste,
+        sprintf(
+            paste0(
+                "<svg width=\"20em\" height=\"1.5em\">",
+                paste0(
+                    "<rect width=\"%f%%\" height=\"1.5em\" ",
+                    "style=\"fill:rgb(125,125,125)\"></rect>"
+                ),
+                paste0(
+                    "<text x=\"2%%\" y=\"50%%\" fill=\"black\"",
+                    "dominant-baseline=\"central\">%s</text>"
+                ),
+                paste0(
+                    "<text x=\"%f%%\" y=\"50%%\" fill=\"white\"",
+                    "dominant-baseline=\"central\" >%.2f</text>"
+                ),
+                "</svg>"
+            ),
+            70 * xs / max(xs),
+            names(xs),
+            70 * xs / max(xs) + 2,
+            xs
+        ),
+        sep="\n"
     )
 }
 
@@ -430,10 +466,12 @@ globalVariables(c(
 .arrayPlot <- function(
     scores,
     coordinates,
+    counts = NULL,
     image = NULL,
     scoreMultiplier = 1.0,
     spotScale = 1,
-    spotOpacity = 1
+    spotOpacity = 1,
+    numTopGenes = 5
 ) {
     spots <- intersect(scores$spot, rownames(coordinates))
 
@@ -464,6 +502,26 @@ globalVariables(c(
         inner_join(scores, by="spot") %>%
         mutate(score = .data$score ^ scoreMultiplier) %>%
         mutate(tooltip = .data$spot)
+
+    if (!is.null(counts)) {
+        topGenes <-
+            counts %>%
+            group_by(.data$spot) %>%
+            mutate(rank = rank(-.data$count, ties.method = "first")) %>%
+            filter(.data$rank <= numTopGenes) %>%
+            arrange(-.data$count) %>%
+            summarize(topGenes = paste(
+                .SVGBarplot(setNames(.data$count, .data$gene))
+            ))
+        df <-
+            df %>%
+            inner_join(topGenes, by = "spot") %>%
+            mutate(tooltip = paste(sep = "<br />",
+                .data$tooltip,
+                .data$topGenes
+            )) %>%
+            select(-.data$topGenes)
+    }
 
     ggplot() +
         annotation +
@@ -621,32 +679,10 @@ globalVariables(c(
         mutate(rank = rank(-.data$mean, ties.method = "first")) %>%
         filter(.data$rank <= numTopFeatures) %>%
         arrange(-.data$mean) %>%
-        summarize(tooltip = invoke(
-            paste,
-            sprintf(
-                paste0(
-                    "<svg width=\"20em\" height=\"1.5em\">",
-                        paste0(
-                            "<rect width=\"%f%%\" height=\"1.5em\" ",
-                            "style=\"fill:rgb(125,125,125)\"></rect>"
-                        ),
-                        paste0(
-                            "<text x=\"2%%\" y=\"50%%\" fill=\"black\"",
-                            "dominant-baseline=\"central\">%s</text>"
-                        ),
-                        paste0(
-                            "<text x=\"%f%%\" y=\"50%%\" fill=\"white\"",
-                            "dominant-baseline=\"central\" >%.2f</text>"
-                        ),
-                    "</svg>"
-                ),
-                70 * mean / max(mean),
-                !! sym(featureName),
-                70 * mean / max(mean) + 2,
-                mean
-            ),
-            sep="\n"
-        ))
+        summarize(tooltip = .SVGBarplot(setNames(
+            mean,
+            nm = !! sym(featureName)
+        )))
     vertices <-
         vertices %>%
         inner_join(tooltips, by = "name") %>%
@@ -738,6 +774,7 @@ globalVariables(c(
 .makeServer <- function(
     assignments,
     clusterMeans,
+    counts,
     scores,
     colors,
     image,
@@ -825,6 +862,7 @@ globalVariables(c(
                         scores = scores_ %>%
                             select(.data$spot, .data$name, .data$score),
                         coordinates = coordinates,
+                        counts = counts,
                         image =
                             if (!is.null(image) && !is.null(coordinates) &&
                                     showImage() == "Show")
@@ -1011,6 +1049,7 @@ globalVariables(c(
         server = .makeServer(
             assignments = data$assignments,
             clusterMeans = data$means,
+            counts = data$counts,
             scores = data$scores,
             colors = data$colors,
             image = image,
@@ -1081,8 +1120,8 @@ runCPie <- function(
     }
     shiny::runGadget(
         app = .makeApp(
-            counts = counts,
             image = image,
+            counts = counts,
             coordinates = spotCoordinates,
             margin = margin,
             resolutions = resolutions,

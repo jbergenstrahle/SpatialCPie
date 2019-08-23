@@ -4,8 +4,8 @@
 \alias{.makeServer}
 \title{SpatialCPie server}
 \usage{
-.makeServer(assignments, clusterMeans, scores, colors, image, coordinates,
-  featureName)
+.makeServer(assignments, clusterMeans, counts, scores, colors, image,
+  coordinates, featureName)
 }
 \arguments{
 \item{assignments}{\code{\link[base]{data.frame}} with cluster assignments
