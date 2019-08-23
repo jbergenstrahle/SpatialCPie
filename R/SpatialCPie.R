@@ -189,6 +189,7 @@ globalVariables(c(
 
     ## Relabel the data to maximize overlap between labels in consecutive
     ## resolutions
+    message("Maximizing label overlap in consecutive resolutions")
     assignments <- .maximizeOverlap(assignments)
 
     ## Concatenate assignments to `data.frame`
@@ -299,16 +300,19 @@ globalVariables(c(
 
     assignments <-
         resolutions %>%
-        map(~assignmentFunction(
-            .,
-            if (margin == "spot") t(counts)
-            else {
-                log(as.matrix(counts) + 1) %>%
-                    prop.table(margin = 2) %>%
-                    apply(1, .zscore) %>%
-                    t()
-            }
-        )) %>%
+        map(function(r) {
+            message(sprintf("Clustering resolution %d", r))
+            assignmentFunction(
+                r,
+                if (margin == "spot") t(counts)
+                else {
+                    log(as.matrix(counts) + 1) %>%
+                        prop.table(margin = 2) %>%
+                        apply(1, .zscore) %>%
+                        t()
+                }
+            )
+        }) %>%
         setNames(resolutions) %>%
         .tidyAssignments() %>%
         rename(!! sym(margin) := .data$unit)
@@ -343,6 +347,7 @@ globalVariables(c(
         column_to_rownames(otherMargin) %>%
         .computeClusterColors()
 
+    message("Scoring spot-cluster affinity")
     scores <-
         if (margin == "spot") {
             countsAndMeans <-
