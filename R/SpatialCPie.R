@@ -455,20 +455,23 @@ globalVariables(c(
 
     coordinates$y <- ymax - coordinates$y + ymin
 
-    wideScores <-
-        scores %>%
+    df <-
+        coordinates %>%
+        rownames_to_column("spot") %>%
+        inner_join(scores, by="spot") %>%
         mutate(score = .data$score ^ scoreMultiplier) %>%
-        spread(.data$name, .data$score) %>%
-        as.data.frame() %>%
-        column_to_rownames("spot")
+        mutate(tooltip = .data$spot)
 
     ggplot() +
         annotation +
-        scatterpie::geom_scatterpie(
-            mapping = aes_string(x = "x", y = "y", r = "r"),
-            data = cbind(wideScores[spots, ], coordinates[spots, ]),
-            cols = colnames(wideScores),
-            alpha = spotOpacity
+        geom_scatterpie_interactive(
+            mapping = ggplot2::aes_string(
+                x0 = "x", y0 = "y", r = "r", amount = "score", fill = "name",
+                tooltip = "tooltip"
+            ),
+            data = df,
+            alpha = spotOpacity,
+            n = 64
         ) +
         coord_fixed() +
         scale_x_continuous(expand = c(0, 0), limits = c(xmin, xmax)) +
