@@ -46,6 +46,17 @@ globalVariables(c(
 ))
 
 
+#' Logsumexp
+#'
+#' Adapted from https://stat.ethz.ch/pipermail/r-help/2011-February/269205.html
+#' @param xs
+#' @keywords internal
+.logsumexp <- function(xs) {
+    idx <- which.max(xs)
+    log1p(sum(exp(xs[-idx] - xs[idx]))) + xs[idx]
+}
+
+
 #' Likeness score
 #'
 #' @param d distance vector.
@@ -56,8 +67,7 @@ globalVariables(c(
     d,
     c = 1.0
 ) {
-    score <- exp(-c * d)
-    score / sum(score)
+    exp(-c * d - .logsumexp(-c * d))
 }
 
 #' Z-score
@@ -386,7 +396,7 @@ globalVariables(c(
     normalizedScores <-
         scores %>%
         group_by(.data$resolution, .data$spot) %>%
-        mutate(score = .data$score / sum(.data$score)) %>%
+        mutate(score = .data$score / max(.data$score)) %>%
         ungroup()
 
     list(
