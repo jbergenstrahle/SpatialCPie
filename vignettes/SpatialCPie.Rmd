@@ -94,7 +94,7 @@ assignInNamespace(
                                 interpolate = TRUE
                             )
                         else NULL,
-                    scoreMultiplier = 5.0,
+                    scoreMultiplier = 1.0,
                     spotOpacity = if (is.null(image)) 1.0 else 0.7
                 ) +
                     ggplot2::guides(

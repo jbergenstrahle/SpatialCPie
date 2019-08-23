@@ -369,7 +369,10 @@ globalVariables(c(
             ]
             distances %>%
                 group_by(.data$resolution, .data$spot) %>%
-                mutate(score = .likeness(.data$distance)) %>%
+                mutate(
+                    score = .likeness(.data$distance / sum(.data$distance),
+                    c = 40.
+                )) %>%
                 ungroup() %>%
                 select(-.data$distance)
         } else {
