@@ -195,7 +195,19 @@ Computing cluster assignments
 The cluster assignments will be calculated during the loading of the gadget. The cluster assignments are labels assigned to each spot over different *cluster resolutions*, where we use the terminology "(cluster) resolution k" to refer to
 a partitioning of the spots into $k$ clusters.
 
-By default, clustering is performed with `base::kmeans` function at resolution 2:4. The user can specify the number of cluster resolutions with the `resolution` argument. The algorithm for clustering can also be specified with the `assignmentFunction` argument. Use `?runCPie` for a complete list of function options.
+By default, clustering is performed with `base::kmeans` at resolutions `2:4`.
+The arguments `resolutions` and `assignmentFunction` to `runCPie` can be used to customize these defaults.
+For example, to instead cluster over resolutions 3 and 5 with `cluster::pam`, call `runCPie` as follows:
+
+```{r, eval=FALSE, echo=TRUE}
+runCPie(
+    counts,
+    resolutions = c(3, 5),
+    assignmentFunction = function(k, x) cluster::pam(x, k = k)$clustering
+)
+```
+
+Use `?runCPie` for a complete list of function options.
 
 Visualization
 -------------
