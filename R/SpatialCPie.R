@@ -1,3 +1,4 @@
+#' @importFrom data.table as.data.table
 #' @importFrom dplyr
 #' arrange filter first group_by inner_join mutate n rename select summarize
 #' ungroup
@@ -33,7 +34,12 @@
 ## (ref: https://stackoverflow.com/a/12429344)
 globalVariables(c(
     ".",
+    "cluster",
+    "count",
+    "name",
     "otherMargin",
+    "resolution",
+    "spot",
     "xcoord",
     "ycoord",
     NULL
@@ -339,18 +345,14 @@ globalVariables(c(
 
     scores <-
         if (margin == "spot") {
-            longCounts %>%
-                inner_join(clusterMeans, by = "gene") %>%
-                group_by(
-                    .data$resolution,
-                    .data$spot,
-                    .data$cluster,
-                    .data$name
-                ) %>%
-                summarize(
-                    distance = sqrt(mean((.data$count - .data$mean) ^ 2))
-                ) %>%
-                ungroup() %>%
+            countsAndMeans <-
+                longCounts %>%
+                inner_join(clusterMeans, by = "gene")
+            distances <- as.data.table(countsAndMeans)[,
+                .(distance = sqrt(mean((count - mean) ^ 2))),
+                by = .(resolution, cluster, spot, name)
+            ]
+            distances %>%
                 group_by(.data$resolution, .data$spot) %>%
                 mutate(score = .likeness(.data$distance)) %>%
                 ungroup() %>%

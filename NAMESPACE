@@ -3,6 +3,7 @@
 export(parseSpotFile)
 export(runCPie)
 importFrom(SummarizedExperiment,assay)
+importFrom(data.table,as.data.table)
 importFrom(dplyr,arrange)
 importFrom(dplyr,filter)
 importFrom(dplyr,first)
