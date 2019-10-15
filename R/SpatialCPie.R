@@ -1,4 +1,5 @@
 #' @importFrom data.table as.data.table
+#' @importFrom digest sha1
 #' @importFrom dplyr
 #' arrange filter first group_by inner_join mutate n rename select summarize
 #' ungroup
@@ -163,40 +164,18 @@ globalVariables(c(
 #'
 #' @param assignments list of assignment vectors.
 #' @return a \code{\link[base]{data.frame}} containing the `assignments`, with
-#' the data relabeled so that (1) for each resolution `r`, labels are in
-#' `[1..r]` and (2) the overlap between consecutive assignment vectors is
-#' maximized. Additionally, an `r = 1` resolution is added if it does not
-#' already exist.
+#' the data relabeled so that the overlap between consecutive assignment
+#' vectors is maximized. Additionally, a "root" resolution is added.
 #' @keywords internal
 .tidyAssignments <- function(
     assignments
 ) {
-    ## Make sure that all labels in resolution r are in [1..r]
-    assignments <- lapply(
-        assignments,
-        function(assignment) {
-            oldLabels <- unique(assignment)
-            newLabels <- setNames(seq_along(oldLabels), nm = oldLabels)
-            setNames(
-                newLabels[as.character(assignment)],
-                nm = names(assignment)
-            )
-        }
+    ## Add "root" resolution
+    units <- names(assignments[[1]])
+    assignments <- c(
+        list("root" = setNames(rep(1, length(assignments[[1]])), nm = units)),
+        assignments
     )
-
-    ## Sort resolutions
-    names(assignments) <- assignments %>% map_int(max)
-    assignments <- assignments[
-        as.character(sort(as.numeric(names(assignments))))]
-
-    ## Add first resolution if it does not exist
-    if (names(assignments)[1] != "1") {
-        units <- names(assignments[[1]])
-        assignments <- c(
-            list("1" = setNames(rep(1, length(units)), nm = units)),
-            assignments
-        )
-    }
 
     ## Relabel the data to maximize overlap between labels in consecutive
     ## resolutions
@@ -242,7 +221,7 @@ globalVariables(c(
 
     clusterColors <- cbind(
         50,
-        200 * t((t(clusterLoadings) - minLoading) / (maxLoading - minLoading))
+        200 * t((t(clusterLoadings) - minLoading) / (maxLoading - minLoading + 1e-10))
         - 100
     )
 
@@ -312,7 +291,7 @@ globalVariables(c(
     assignments <-
         resolutions %>%
         map(function(r) {
-            message(sprintf("Clustering resolution %d", r))
+            message(sprintf("Clustering resolution %s", deparse(r)))
             assignmentFunction(
                 r,
                 if (margin == "spot") t(counts)
@@ -671,7 +650,7 @@ globalVariables(c(
         ) %>%
         mutate(label = sprintf(
             "Resolution %s",
-            levels(assignments$resolution)[.data$resolution]
+            as.character(levels(assignments$resolution)[.data$resolution])
         ))
 
     tooltips <-
@@ -785,8 +764,7 @@ globalVariables(c(
 ) {
     resolutions <-
         levels(assignments$resolution) %>%
-        as.numeric() %>%
-        keep(~. != 1)
+        keep(~. != "root")
 
     function(input, output, session) {
         if (is.null(image)) {
@@ -828,7 +806,7 @@ globalVariables(c(
 
         ###
         ## ARRAY PLOT
-        arrayName <- function(r) sprintf("array%d", as.numeric(r))
+        arrayName <- function(r) sprintf("array%s", sha1(r))
 
         for (r in resolutions) {
             shiny::insertUI("#array", "beforeEnd",

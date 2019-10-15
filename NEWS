@@ -1,4 +1,5 @@
 Changes in version 1.1
++ (1.1.10) Added support for "non-int resolutions" (e.g. a list of parameters for the clustering)
 + (1.1.9) Added example on how to customize resolutions and assignment function to vignette
 + (1.1.8) Changed UI to make better use of screen real estate
 + (1.1.7) Added "top genes" barplot in array plot tooltip
