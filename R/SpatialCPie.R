@@ -855,7 +855,8 @@ globalVariables(c(
                     {
                         ggiraph::girafe_options(
                             x = ggiraph::girafe(
-                                ggobj = eval(call(arrayName(r_)))),
+                                ggobj = eval(call(arrayName(r_))),
+                                xml_reader_options = list(options = "HUGE")),
                             ggiraph::opts_toolbar(saveaspng = FALSE),
                             ggiraph::opts_zoom(max = 5)
                         )
