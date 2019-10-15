@@ -967,7 +967,7 @@ runCPie <- function(
     spotCoordinates = NULL,
     margin = "spot",
     resolutions = 2:4,
-    assignmentFunction = function(k, x) kmeans(x, centers =  k)$cluster,
+    assignmentFunction = function(k, x) kmeans(x, centers = k)$cluster,
     view = NULL
 ) {
     if (is(counts, "SummarizedExperiment")) {
