@@ -20,6 +20,7 @@
 #' @importFrom rlang !! := .data sym
 #' @importFrom shiny debounce observeEvent reactive
 #' @importFrom shinyjs hideElement
+#' @importFrom shinyWidgets radioGroupButtons materialSwitch
 #' @importFrom stats dist kmeans setNames sd
 #' @importFrom SummarizedExperiment assay
 #' @importFrom tibble column_to_rownames rownames_to_column
@@ -51,7 +52,8 @@ globalVariables(c(
 #' Logsumexp
 #'
 #' Adapted from https://stat.ethz.ch/pipermail/r-help/2011-February/269205.html
-#' @param xs
+#' @param xs input vector
+#' @return log of summed exponentials
 #' @keywords internal
 .logsumexp <- function(xs) {
     idx <- which.max(xs)
@@ -221,7 +223,9 @@ globalVariables(c(
 
     clusterColors <- cbind(
         50,
-        200 * t((t(clusterLoadings) - minLoading) / (maxLoading - minLoading + 1e-10))
+        200 * t(
+            (t(clusterLoadings) - minLoading)
+            / (maxLoading - minLoading + 1e-10))
         - 100
     )
 
