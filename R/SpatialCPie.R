@@ -652,10 +652,9 @@ globalVariables(c(
             y = first(.data$ymax) +
                 0.1 * (first(.data$ymax) - first(.data$ymin))
         ) %>%
-        mutate(label = sprintf(
-            "Resolution %s",
-            as.character(levels(assignments$resolution)[.data$resolution])
-        ))
+        mutate(
+          label = as.character(levels(assignments$resolution)[.data$resolution])
+        )
 
     tooltips <-
         clusterMeans %>%
