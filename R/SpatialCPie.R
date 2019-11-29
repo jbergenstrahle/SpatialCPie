@@ -132,6 +132,12 @@ globalVariables(c(
             })
     }
 
+    ## Convert cluster labels to natural numbers
+    xss <- map(
+        xss,
+        function(x) setNames(as.character(as.integer(as.factor(x))), names(x))
+    )
+
     ## Compute reassignment map between each label pair
     reassignments <-
         list(unname(head(xss, -1)), unname(tail(xss, -1))) %>%
