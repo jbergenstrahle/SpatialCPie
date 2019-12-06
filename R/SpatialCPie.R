@@ -539,7 +539,7 @@ globalVariables(c(
 }
 
 
-#' Cluster tree
+#' Cluster graph
 #'
 #' @param assignments \code{\link[base]{data.frame}} with columns `"name"`,
 #' `"resolution"`, and `"cluster"`.
@@ -559,9 +559,9 @@ globalVariables(c(
 #' threshold.
 #' @param numTopFeatures \code{\link[base]{integer}} specifying the number of
 #' features to show in the hover tooltips.
-#' @return \code{\link[ggplot2]{ggplot}} object of the cluster tree.
+#' @return \code{\link[ggplot2]{ggplot}} object of the cluster graph.
 #' @keywords internal
-.clusterTree <- function(
+.clusterGraph <- function(
     assignments,
     clusterMeans,
     featureName,
@@ -794,9 +794,9 @@ globalVariables(c(
         spotSize        <- reactive({ input$spotSize        }) %>% debounce(1000)
 
         ###
-        ## CLUSTER TREE
-        treePlot <- reactive({
-            p <- .clusterTree(
+        ## CLUSTER GRAPH
+        clusterGraph <- reactive({
+            p <- .clusterGraph(
                 assignments,
                 clusterMeans,
                 transitionProportions = edgeProportions(),
@@ -807,9 +807,9 @@ globalVariables(c(
                 scale_color_manual(values = colors)
         })
 
-        output$tree <- ggiraph::renderGirafe({
+        output$clusterGraph <- ggiraph::renderGirafe({
             plot <- ggiraph::girafe_options(
-                x = ggiraph::girafe(ggobj = treePlot()),
+                x = ggiraph::girafe(ggobj = clusterGraph()),
                 ggiraph::opts_toolbar(saveaspng = FALSE)
             )
             plot
@@ -881,8 +881,8 @@ globalVariables(c(
         outputs <- reactive({
             list(
                 clusters = assignments %>% select(-.data$name),
-                treePlot = treePlot(),
-                piePlots = lapply(
+                clusterGraph = clusterGraph(),
+                arrayPlot = lapply(
                     setNames(nm = resolutions),
                     function(x) eval(call(arrayName(x)))
                 )
@@ -943,8 +943,8 @@ globalVariables(c(
 #' @param view \code{\link[shiny]{viewer}} object.
 #' @return a list with the following items:
 #' - `"clusters"`: Cluster assignments (may differ from `assignments`)
-#' - `"treePlot"`: The cluster tree ggplot object
-#' - `"piePots"`: The pie plot ggplot objects
+#' - `"clusterGraph"`: The cluster tree ggplot object
+#' - `"arrayPlot"`: The pie plot ggplot objects
 #' @export
 #' @examples
 #' if (interactive()) {

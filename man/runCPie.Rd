@@ -32,8 +32,8 @@ clustering resolutions.}
 a list with the following items:
 \itemize{
 \item \code{"clusters"}: Cluster assignments (may differ from \code{assignments})
-\item \code{"treePlot"}: The cluster tree ggplot object
-\item \code{"piePots"}: The pie plot ggplot objects
+\item \code{"clusterGraph"}: The cluster tree ggplot object
+\item \code{"arrayPlot"}: The pie plot ggplot objects
 }
 }
 \description{

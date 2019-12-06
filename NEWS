@@ -1,3 +1,6 @@
+Changes in version 1.3
++ (1.3.2) Renamed cluster tree to cluster graph
+
 Changes in version 1.1
 + (1.1.11) Added support for displaying array plots with a large number of spots
 + (1.1.10) Added support for "non-int resolutions" (e.g. a list of parameters for the clustering)

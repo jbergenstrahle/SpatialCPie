@@ -108,7 +108,7 @@ assignInNamespace(
         )
         list(
             clusters = data$assignments %>% select(-.data$name),
-            treePlot = SpatialCPie:::.clusterTree(
+            clusterGraph = SpatialCPie:::.clusterGraph(
                 data$assignments,
                 data$means,
                 data$featureName,
@@ -116,7 +116,7 @@ assignInNamespace(
                 transitionThreshold = 0.05
             ) +
                 ggplot2::scale_color_manual(values = data$colors),
-            piePlots = arrayPlots
+            arrayPlot = arrayPlots
         )
     }
 )
@@ -222,8 +222,8 @@ result <- runCPie(
 )
 ```
 
-This opens up the gadget window, which has two main elements: the **cluster tree** and the **spatial array plots**.
-The cluster tree is interactive and by selecting rows of nodes, the corresponding spatial array plots are also displayed. These can be viewed by scrolling down. The information contained in these plots will be discussed in the next section. There are a number of parameters that can be changed within the gadget which affects the visual representation.
+This opens up the gadget window, which has two main elements: the **cluster graph** and the **spatial array plots**.
+The cluster plot is interactive and by selecting rows of nodes, the corresponding spatial array plots are also displayed. These can be viewed by scrolling down. The information contained in these plots will be discussed in the next section. There are a number of parameters that can be changed within the gadget which affects the visual representation.
 
 To exit the gadget, press the "Done" button.
 The plots in the gadget and the cluster assignments are stored in the output
@@ -233,13 +233,13 @@ object, which has the following structure:
 str(result, max.level = 1)
 ```
 
-### Cluster tree
+### Cluster plot
 
 ```{r}
-result$treePlot
+result$clusterGraph
 ```
 
-The cluster tree is a visual representation of how the spatial features
+The cluster graph is a visual representation of how the spatial features
 transition from clusters of lower resolution to clusters of higher resolution.
 The edge opacities show the proportion of spots that transition to or from a
 given cluster while node radii display the size of each cluster.
@@ -313,7 +313,7 @@ sub-sampling of the clusters that the user wants to re-cluster further.
 
 As a practical example, from the array plot above, we can see that clusters 1
 and 4 in resolution 4 appear in mostly the same spatial areas and, from the
-cluster tree, we can also see that they are mostly derived from the same
+cluster graph, we can also see that they are mostly derived from the same
 lower-resolution cluster.
 Therefore, it could be interesting to sub-cluster the spots assigned to these
 clusters:
@@ -333,10 +333,10 @@ subclusterResult <- runCPie(
     image = tissue,
     spotCoordinates = spots
 )
-subclusterResult$treePlot
+subclusterResult$clusterGraph
 ```
 
-The cluster tree indicates that we appear to pick up three different clusters of
+The cluster graph indicates that we appear to pick up three different clusters of
 stromal cells, as there is a clear separation between the clusters up to and
 including resolution 3.
 In contrast, clusters in resolution 4 show a pattern of shared ancestry,
