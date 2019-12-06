@@ -189,6 +189,10 @@ repeat {
 }
 ```
 
+Our data has already been normalized.
+If you are using raw count data, it is usually a good idea to normalize it before proceeding.
+We have found `SCTransform` in the [Seurat](https://satijalab.org/seurat/) package to work well for Spatial Transcriptomics data.
+
 Computing cluster assignments
 -----------------------------
 
