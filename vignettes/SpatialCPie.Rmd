@@ -337,13 +337,10 @@ subclusterResult$treePlot
 ```
 
 The cluster tree indicates that we appear to pick up three different clusters of
-stromal cells:
-In resolution 4, clusters 2 and 3 are mostly derived from the same parent
-cluster and their colors indicate that their expression profiles are similar.
-In contrast, there is still a clear separation between the clusters in
-resolution 3.
-Staking out the spatial and transcriptional differences between these three
-clusters appears to be a good basis for further analysis.
+stromal cells, as there is a clear separation between the clusters up to and
+including resolution 3.
+In contrast, clusters in resolution 4 show a pattern of shared ancestry,
+indicating that cluster assignments are becoming more ambiguous.
 
 ```{r}
 subclusterResult$piePlots$`3`
