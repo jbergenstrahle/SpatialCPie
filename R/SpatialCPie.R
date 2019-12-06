@@ -661,7 +661,8 @@ globalVariables(c(
                 0.1 * (first(.data$ymax) - first(.data$ymin))
         ) %>%
         mutate(
-          label = as.character(levels(assignments$resolution)[.data$resolution])
+            label = as.character(
+                levels(assignments$resolution)[.data$resolution])
         )
 
     tooltips <-
