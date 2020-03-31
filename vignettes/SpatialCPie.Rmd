@@ -256,7 +256,7 @@ farther away in color space.
 ### Spatial array plots
 
 ```{r}
-result$piePlots$`4`
+result$arrayPlot$`4`
 ```
 
 The spatial array plots show the spatial locations of the clusters.
@@ -347,5 +347,5 @@ In contrast, clusters in resolution 4 show a pattern of shared ancestry,
 indicating that cluster assignments are becoming more ambiguous.
 
 ```{r}
-subclusterResult$piePlots$`3`
+subclusterResult$arrayPlot$`3`
 ```
