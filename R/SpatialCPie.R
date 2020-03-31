@@ -180,6 +180,10 @@ globalVariables(c(
 .tidyAssignments <- function(
     assignments
 ) {
+    if (length(assignments) == 0) {
+        stop("Need at least one resolution")
+    }
+
     ## Add "root" resolution
     units <- names(assignments[[1]])
     assignments <- c(
