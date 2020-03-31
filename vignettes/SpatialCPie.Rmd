@@ -65,7 +65,8 @@ assignInNamespace(
         spotCoordinates = NULL,
         margin = "spot",
         resolutions = 2:4,
-        assignmentFunction = function(k, x) kmeans(x, centers =  k)$cluster
+        assignmentFunction = function(k, x) kmeans(x, centers =  k)$cluster,
+        scoreMultiplier = 1.0
     ) {
         data <- SpatialCPie:::.preprocessData(
             counts,
@@ -94,7 +95,7 @@ assignInNamespace(
                                 interpolate = TRUE
                             )
                         else NULL,
-                    scoreMultiplier = 1.0,
+                    scoreMultiplier = scoreMultiplier,
                     spotOpacity = if (is.null(image)) 1.0 else 0.7
                 ) +
                     ggplot2::guides(
@@ -306,6 +307,17 @@ Note that the definition implies that it is possible to (practically) hard-label
 the spots by setting $\lambda$ to a high value.
 This follows since the relative score for the highest scoring cluster will tend
 towards $1$ as $\lambda\to\infty$.
+For example, setting $\lambda=10.0$ yields
+
+```{r, echo=FALSE, message=FALSE}
+result <- runCPie(
+    counts,
+    image = tissue,
+    spotCoordinates = spots,
+    scoreMultiplier = 10.0
+)
+result$arrayPlot$`4`
+```
 
 Sub-clustering
 --------------
