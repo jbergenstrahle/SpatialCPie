@@ -145,27 +145,23 @@ globalVariables(c(
         map(lift(maximumOverlap))
 
     ## Sync reassignments by propagating them forward
-    if (length(reassignments) > 1) {
-        reassignments <- accumulate(
-            reassignments,
-            function(prev, cur) {
-                lapply(cur, function(x) {
-                    if (x %in% names(prev)) prev[[x]]
-                    else x
-                })
-            }
-        )
-    }
+    reassignments <- accumulate(
+        reassignments,
+        function(prev, cur) {
+            list(lapply(cur, function(x) {
+                if (x %in% names(prev[[1]])) prev[[1]][[x]]
+                else x
+            }))
+        },
+        .init = list(setNames(nm = unique(xss[[1]])))
+    )
 
     ## Apply reassignments
-    c(
-        list(xss[[1]]),
-        list(tail(xss, -1), reassignments) %>%
-            transpose %>%
-            map(lift(function(xs, reassignment) {
-                vapply(xs, function(x) reassignment[[x]], character(1))
-            }))
-    ) %>%
+    list(xss, reassignments) %>%
+        transpose() %>%
+        map(lift(function(xs, reassignment) {
+            vapply(xs, function(x) reassignment[[x]], character(1))
+        })) %>%
         setNames(names(xss))
 }
 

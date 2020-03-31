@@ -44,3 +44,14 @@ test_that("SpatialCPie:::.maximizeOverlap is idempotent", {
     ))
     expect_equal(.maximizeOverlap(maxOverlap), maxOverlap)
 })
+
+test_that("SpatialCPie:::.maximizeOverlap regression test: one label edge case", {
+    expect_equal(
+        .maximizeOverlap(list(
+            "A" = setNames(rep("1", 1), letters[1]),
+            "B" = setNames(rep("1", 1), letters[1]),
+            "C" = setNames(rep("1", 1), letters[1])
+        )),
+        list("A" = c("a" = "1"), "B" = c("a" = "1"), "C" = c("a" = "1"))
+    )
+})
