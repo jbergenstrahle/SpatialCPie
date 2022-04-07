@@ -30,7 +30,7 @@ Imports:
     dplyr (>= 0.7.6),
     ggforce (>= 0.3.0),
     ggiraph (>= 0.5.0),
-    ggplot2 (>= 3.0.0),
+    ggplot2 (>= 3.3.5),
     ggrepel (>= 0.8.0),
     grid (>= 3.5.1),
     igraph (>= 1.2.2),

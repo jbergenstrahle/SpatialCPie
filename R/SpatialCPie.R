@@ -727,7 +727,7 @@ globalVariables(c(
         labs(alpha = "Proportion", color = "Cluster") +
         scale_size(guide = "none", range = c(2, 7)) +
         scale_x_continuous(expand = c(0.1, 0.1)) +
-        guides(alpha = FALSE, color = FALSE) +
+        guides(alpha = "none", color = "none") +
         theme_bw() +
         theme(
             axis.ticks.x = element_blank(),
