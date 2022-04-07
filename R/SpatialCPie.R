@@ -837,6 +837,10 @@ globalVariables(c(
                 scores_ <-
                     scores %>%
                     filter(.data$resolution == r_)
+	        clusters <-
+		    scores_ %>%
+		    group_by(name) %>%
+		    summarize(cluster = first(cluster), name = first(name))
                 assign(envir = parent.frame(), arrayName(r_), reactive(
                     .arrayPlot(
                         scores = scores_ %>%
@@ -859,16 +863,14 @@ globalVariables(c(
                     ) +
                         guides(fill = guide_legend(title = "Cluster")) +
                         scale_fill_manual(
-                            values = colors,
-                            labels = unique(scores_$cluster)
+                            values = colors[clusters$name],
+                            labels = clusters$cluster
                         )
                 ))
                 output[[arrayName(r_)]] <- ggiraph::renderGirafe(
                     {
                         ggiraph::girafe_options(
-                            x = ggiraph::girafe(
-                                ggobj = eval(call(arrayName(r_))),
-                                xml_reader_options = list(options = "HUGE")),
+                            x = ggiraph::girafe(ggobj = eval(call(arrayName(r_)))),
                             ggiraph::opts_toolbar(saveaspng = FALSE),
                             ggiraph::opts_zoom(max = 5)
                         )
